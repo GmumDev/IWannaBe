@@ -13,7 +13,7 @@ namespace IWannabe.Stages.HitBack
     /// </summary>
     public sealed class HitBackStagePresenter : StagePresenter
     {
-        enum BallState { Waiting, Flying, Held, Launched, Dropped }
+        enum BallState { Waiting, Flying, Shelved, Held, Launched, Dropped }
 
         sealed class Ball
         {
@@ -21,6 +21,9 @@ namespace IWannabe.Stages.HitBack
             public TimelineCue Cue;
             public TimelineNote Note;
             public BallState State;
+            /// <summary>따라 치기 공: 종이 울리면 선반에 줄섰다가 응답 박에 떨어진다.</summary>
+            public bool Echo;
+            public Vector3 Slot;
             public float Size;
             public float ArcHeight;
             public Vector3 StartPosition;
@@ -51,6 +54,11 @@ namespace IWannabe.Stages.HitBack
         [SerializeField] Transform hitPoint;
         [SerializeField] SpriteRenderer ballTemplate;
         [SerializeField] SpriteRenderer flashTemplate;
+        [Tooltip("홀드(charge) 동안 뗄 때까지 차오르는 링. 타격 지점에 둔다.")]
+        [SerializeField] ProgressRing holdRing;
+        [Tooltip("따라 치기 공이 응답 리듬 모양대로 줄서는 선반의 양 끝.")]
+        [SerializeField] Transform echoShelfLeft;
+        [SerializeField] Transform echoShelfRight;
 
         [Header("Look")]
         [SerializeField] Color throwColor = new Color(0.24f, 0.35f, 0.5f);
@@ -81,6 +89,9 @@ namespace IWannabe.Stages.HitBack
         double swingStart = double.NegativeInfinity;
         double pitcherKick = double.NegativeInfinity;
         bool holding;
+        HoldRingDriver ringDriver;
+
+        Vector3 BellPoint => pitcher.position + Vector3.up * 1.5f;
 
         public override IEnumerable<AudioClip> AudioClips => new[] { hitSound, bigHitSound, barelySound, missSound, whiffSound };
 
@@ -91,15 +102,22 @@ namespace IWannabe.Stages.HitBack
             pitcherScale = pitcher.localScale;
             batterScale = batter.localScale;
             SetPaddle(paddleRestAngle);
+            ringDriver = new HoldRingDriver(holdRing, chargeColor, barelyFlashColor, Color.gray);
         }
 
         public override void OnPatternSpawn(TimelinePattern pattern)
         {
             foreach (var cue in pattern.Cues)
             {
-                if (cue.TargetNoteId < 0 || cue.CueId == HitBackCues.Bell) continue;
+                if (cue.TargetNoteId < 0) continue;
 
                 var note = Context.Timeline.Notes[cue.TargetNoteId];
+                if (cue.CueId == HitBackCues.Bell)
+                {
+                    SpawnEchoBall(pattern, cue, note);
+                    continue;
+                }
+
                 float flightBeats = (float)(note.Beat - cue.Beat);
                 var ball = new Ball
                 {
@@ -119,13 +137,35 @@ namespace IWannabe.Stages.HitBack
             }
         }
 
+        /// <summary>종이 울릴 때 나타나 선반에 줄서는 공. 선반 위 위치가 곧 응답 리듬이다.</summary>
+        void SpawnEchoBall(TimelinePattern pattern, TimelineCue cue, TimelineNote note)
+        {
+            var ball = new Ball
+            {
+                Sprite = RentBall(),
+                Cue = cue,
+                Note = note,
+                State = BallState.Waiting,
+                Echo = true,
+                Slot = EchoShelf.Slot(echoShelfLeft.position, echoShelfRight.position, note.Beat, pattern.AnchorBeat, note.Beat - cue.Beat),
+                Size = 0.45f,
+            };
+            ball.Sprite.color = bellColor;
+            ball.Sprite.transform.localScale = Vector3.one * ball.Size;
+            ball.Sprite.gameObject.SetActive(false);
+            balls.Add(ball);
+            ballByNote[note.Id] = ball;
+        }
+
         public override void OnCue(TimelineCue cue)
         {
             pitcherKick = cue.Time;
             if (cue.CueId == HitBackCues.Bell)
-                SpawnFlash(pitcher.position + Vector3.up * 1.5f, bellColor, 0.6f, 2.2f, 0.35f, cue.Time);
+                SpawnFlash(BellPoint, bellColor, 0.6f, 2.2f, 0.35f, cue.Time);
             else if (cue.CueId == HitBackCues.Tick)
                 SpawnFlash(hitPoint.position, chargeColor, 0.4f, 1.4f, 0.25f, cue.Time);
+            else if (cue.CueId == HitBackCues.Charge && cue.TargetNoteId >= 0)
+                ringDriver.Begin(Context.Timeline.Notes[cue.TargetNoteId]);
         }
 
         public override void OnInputPressed(double songTime) => swingStart = songTime;
@@ -140,6 +180,7 @@ namespace IWannabe.Stages.HitBack
             ballByNote.TryGetValue(judgement.Note.Id, out var ball);
             double now = Context.Conductor.SongTime;
             bool perfect = judgement.Grade == JudgeGrade.Perfect;
+            ringDriver.OnJudged(judgement, now);
 
             if (judgement.Phase == NotePhase.Press)
             {
@@ -194,6 +235,7 @@ namespace IWannabe.Stages.HitBack
             UpdatePaddle(songTime);
             UpdateBalls(songTime, songBeat);
             UpdateFlashes(songTime);
+            ringDriver.Tick(songTime, songBeat);
         }
 
         void UpdatePaddle(double songTime)
@@ -215,9 +257,19 @@ namespace IWannabe.Stages.HitBack
                 {
                     case BallState.Waiting:
                         if (songBeat < ball.Cue.Beat) break;
-                        ball.State = BallState.Flying;
                         ball.Sprite.gameObject.SetActive(true);
+                        if (ball.Echo)
+                        {
+                            ball.State = BallState.Shelved;
+                            goto case BallState.Shelved;
+                        }
+                        ball.State = BallState.Flying;
                         goto case BallState.Flying;
+
+                    case BallState.Shelved:
+                        t.position = EchoShelf.Position(BellPoint, ball.Slot, hitPoint.position, songBeat, ball.Cue.Beat, ball.Note.Beat);
+                        if (songBeat - ball.Note.Beat > 2.0) Despawn(i);
+                        break;
 
                     case BallState.Flying:
                     {

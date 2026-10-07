@@ -69,10 +69,16 @@ namespace IWannabe.EditorTools
             ball.gameObject.SetActive(false);
             flash.gameObject.SetActive(false);
 
+            // 링은 캐릭터가 박마다 눌리는 영향을 받지 않도록 루트 아래, 타격 지점(월드 3.7, -0.7)에 둔다.
+            var ring = Ring(t, "HoldRing", new Vector2(3.7f, -0.7f), 0.75f, 0.12f, material, 15);
+            var shelfLeft = Node(t, "EchoShelfLeft", new Vector2(1f, 2f));
+            var shelfRight = Node(t, "EchoShelfRight", new Vector2(4.2f, 2f));
+
             Assign(presenter,
                 ("pitcher", pitcher), ("batter", batter), ("paddlePivot", pivot),
                 ("releasePoint", release), ("hitPoint", hit),
                 ("ballTemplate", ball), ("flashTemplate", flash),
+                ("holdRing", ring), ("echoShelfLeft", shelfLeft), ("echoShelfRight", shelfRight),
                 ("hitSound", LoadSfx("hit")), ("bigHitSound", LoadSfx("hit_big")),
                 ("barelySound", LoadSfx("hit_barely")), ("missSound", LoadSfx("miss")),
                 ("whiffSound", LoadSfx("whiff")));

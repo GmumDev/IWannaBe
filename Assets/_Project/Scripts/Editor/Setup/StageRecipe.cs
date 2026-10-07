@@ -43,15 +43,19 @@ namespace IWannabe.EditorTools
         /// <summary>(큐 ID, SFX 폴더 안 파일 이름, 볼륨)</summary>
         public abstract IEnumerable<(string cueId, string sfx, float volume)> CueSounds { get; }
 
-        /// <summary>연출 프리팹이 없을 때 만든다. 이미 있으면 손대지 않는다.</summary>
+        /// <summary>연출 프리팹의 계층을 만든다. 프리팹이 없거나 다시 만들기를 요청했을 때만 쓰인다.</summary>
         public abstract GameObject BuildPresenterRoot(StagePrefabKit kit);
 
         public AudioClip LoadSfx(string name) => SetupUtil.LoadRequired<AudioClip>($"{SfxFolder}/{name}.wav");
 
-        public StagePresenter EnsurePresenterPrefab(StagePrefabKit kit)
+        /// <summary>
+        /// 연출 프리팹을 돌려준다. 이미 있으면 그대로 쓰고, <paramref name="rebuild"/>면 레시피대로 덮어쓴다
+        /// (GUID는 유지되지만 내부 오브젝트가 새로 만들어지므로, 손으로 고친 내용은 사라진다).
+        /// </summary>
+        public StagePresenter EnsurePresenterPrefab(StagePrefabKit kit, bool rebuild)
         {
             var existing = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
-            if (existing != null)
+            if (existing != null && !rebuild)
             {
                 var presenter = existing.GetComponent<StagePresenter>();
                 if (presenter != null) return presenter;

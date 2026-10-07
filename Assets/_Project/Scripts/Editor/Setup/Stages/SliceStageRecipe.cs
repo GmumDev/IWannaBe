@@ -82,10 +82,16 @@ namespace IWannabe.EditorTools
             item.gameObject.SetActive(false);
             effect.gameObject.SetActive(false);
 
+            // 링은 검객이 박마다 눌리는 영향을 받지 않도록 루트 아래, 베는 지점(월드 2.7, -0.9)에 둔다.
+            var ring = Ring(t, "HoldRing", new Vector2(2.7f, -0.9f), 0.9f, 0.12f, material, 15);
+            var shelfLeft = Node(t, "EchoShelfLeft", new Vector2(0f, 2.2f));
+            var shelfRight = Node(t, "EchoShelfRight", new Vector2(3.4f, 2.2f));
+
             Assign(presenter,
                 ("master", master), ("swordsman", swordsman), ("swordPivot", swordPivot),
                 ("releasePoint", release), ("strikePoint", strike), ("gong", gong),
                 ("itemTemplate", item), ("effectTemplate", effect),
+                ("holdRing", ring), ("echoShelfLeft", shelfLeft), ("echoShelfRight", shelfRight),
                 ("roundSprite", shapes.Circle), ("stickSprite", shapes.Square), ("ringSprite", shapes.Ring),
                 ("slashSound", LoadSfx("slash")), ("bigSlashSound", LoadSfx("slash_big")),
                 ("barelySound", LoadSfx("slash_barely")), ("missSound", LoadSfx("miss")),

@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using IWannabe.Stages;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -88,6 +89,36 @@ namespace IWannabe.EditorTools
             renderer.color = color;
             renderer.sortingOrder = order;
             return renderer;
+        }
+
+        /// <summary>바탕 원과 진행 호(LineRenderer 두 개)로 된 <see cref="ProgressRing"/>을 만든다. 처음엔 꺼져 있다.</summary>
+        public static ProgressRing Ring(Transform parent, string name, Vector2 position, float radius, float width, Material material, int order)
+        {
+            var node = Node(parent, name, position);
+            var ring = node.gameObject.AddComponent<ProgressRing>();
+            var serialized = new SerializedObject(ring);
+            serialized.FindProperty("track").objectReferenceValue = Line(node, "Track", width, material, order);
+            serialized.FindProperty("fill").objectReferenceValue = Line(node, "Fill", width, material, order + 1);
+            serialized.FindProperty("radius").floatValue = radius;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            ring.Rebuild();
+            node.gameObject.SetActive(false);
+            return ring;
+        }
+
+        static LineRenderer Line(Transform parent, string name, float width, Material material, int order)
+        {
+            var line = Node(parent, name, Vector2.zero).gameObject.AddComponent<LineRenderer>();
+            if (material != null) line.sharedMaterial = material;
+            line.widthMultiplier = width;
+            line.numCapVertices = 4;
+            line.numCornerVertices = 2;
+            line.useWorldSpace = false;
+            line.positionCount = 0;
+            line.sortingOrder = order;
+            line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            line.receiveShadows = false;
+            return line;
         }
 
         public static Color Hex(string hex) => ColorUtility.TryParseHtmlString("#" + hex, out var color) ? color : Color.magenta;

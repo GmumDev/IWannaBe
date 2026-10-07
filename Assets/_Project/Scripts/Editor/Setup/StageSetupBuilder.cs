@@ -27,7 +27,9 @@ namespace IWannabe.EditorTools
     public static class StageSetupBuilder
     {
         // 이 파일이 있으면 다음 스크립트 컴파일 직후 한 번 자동 실행한다(Temp는 버전 관리 대상이 아님).
+        // 내용에 RebuildPresentersToken이 있으면 연출 프리팹도 레시피대로 다시 만든다.
         const string TriggerFile = "Temp/IWannabe.BuildStages";
+        const string RebuildPresentersToken = "rebuild-presenters";
 
         /// <summary>진행 순서. 앞 스테이지를 클리어해야 다음 스테이지가 열린다.</summary>
         static readonly StageRecipe[] Recipes = { new HitBackStageRecipe(), new SliceStageRecipe() };
@@ -35,23 +37,30 @@ namespace IWannabe.EditorTools
         static StageSetupBuilder()
         {
             if (!File.Exists(TriggerFile)) return;
+            bool rebuildPresenters = File.ReadAllText(TriggerFile).Contains(RebuildPresentersToken);
             File.Delete(TriggerFile);
-            EditorApplication.delayCall += () => Build(false);
+            EditorApplication.delayCall += () => Build(false, rebuildPresenters);
         }
 
         [MenuItem("IWannabe/Setup/Build All Stages")]
         static void BuildFromMenu() => Build(true);
 
-        public static void Build(bool askFirst)
+        [MenuItem("IWannabe/Setup/Rebuild Stage Presenter Prefabs")]
+        static void RebuildPresentersFromMenu() => Build(true, true);
+
+        public static void Build(bool askFirst, bool rebuildPresenters = false)
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)
             {
                 Debug.LogWarning("[StageSetup] 플레이 모드에서는 실행할 수 없습니다.");
                 return;
             }
-            if (askFirst && !EditorUtility.DisplayDialog("스테이지 구성",
-                    "모든 스테이지의 연결(에셋·Addressables·카탈로그)을 맞추고 AppRoot 프리팹과 Lobby/StagePlay 씬을 다시 만듭니다.\n" +
-                    "기존 분석 결과·채보·패턴·연출 프리팹은 그대로 둡니다.", "진행", "취소"))
+            string message = rebuildPresenters
+                ? "모든 스테이지의 연출 프리팹을 레시피대로 다시 만듭니다. 프리팹을 손으로 고친 내용은 사라집니다.\n" +
+                  "나머지(분석 결과·채보·패턴)는 그대로 두고, AppRoot와 Lobby/StagePlay 씬은 다시 만듭니다."
+                : "모든 스테이지의 연결(에셋·Addressables·카탈로그)을 맞추고 AppRoot 프리팹과 Lobby/StagePlay 씬을 다시 만듭니다.\n" +
+                  "기존 분석 결과·채보·패턴·연출 프리팹은 그대로 둡니다.";
+            if (askFirst && !EditorUtility.DisplayDialog("스테이지 구성", message, "진행", "취소"))
                 return;
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
 
@@ -73,7 +82,7 @@ namespace IWannabe.EditorTools
                 {
                     var recipe = Recipes[i];
                     Progress($"스테이지 구성: {recipe.DisplayName}", 0.05f + 0.7f * i / Recipes.Length);
-                    var reference = BuildStage(recipe, kit, out string report);
+                    var reference = BuildStage(recipe, kit, rebuildPresenters, out string report);
                     entries.Add(new StageCatalogEntry { stageId = recipe.StageId, displayName = recipe.DisplayName, stage = reference });
                     summary.Append($"\n  {i + 1}. {recipe.DisplayName}: {report}");
                 }
@@ -109,7 +118,7 @@ namespace IWannabe.EditorTools
 
         // ───────────────────────── 스테이지 ─────────────────────────
 
-        static StageReference BuildStage(StageRecipe recipe, StagePrefabKit kit, out string report)
+        static StageReference BuildStage(StageRecipe recipe, StagePrefabKit kit, bool rebuildPresenter, out string report)
         {
             EnsureFolder(recipe.DataFolder);
             ConfigureAudio(recipe);
@@ -146,7 +155,8 @@ namespace IWannabe.EditorTools
             if (analyze) ChartPipeline.Analyze(profile);
             if (generate) ChartPipeline.Generate(profile);
 
-            var presenter = recipe.EnsurePresenterPrefab(kit);
+            // 프리팹을 다시 만들면 컴포넌트 fileID가 바뀌므로 아래 StageDefinition.Setup에서 참조를 다시 건다.
+            var presenter = recipe.EnsurePresenterPrefab(kit, rebuildPresenter);
 
             var cues = new List<CueSound>();
             foreach (var (cueId, sfx, volume) in recipe.CueSounds)
@@ -159,7 +169,8 @@ namespace IWannabe.EditorTools
 
             int notes = 0;
             foreach (var pattern in chart.Patterns) notes += pattern.notes.Count;
-            report = $"{(generate ? "분석·채보 생성" : "기존 채보 유지")}, 노트 {notes}개, 그룹 {recipe.GroupName}";
+            report = $"{(generate ? "분석·채보 생성" : "기존 채보 유지")}, 노트 {notes}개, " +
+                     $"연출 프리팹 {(rebuildPresenter ? "다시 만듦" : "유지")}, 그룹 {recipe.GroupName}";
             return RegisterAddressable(stage, recipe);
         }
 

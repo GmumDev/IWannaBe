@@ -7,12 +7,13 @@ namespace IWannabe.Stages.Slice
 {
     /// <summary>
     /// 스테이지 2 "베기". 왼쪽 스승이 던진 물건을 오른쪽 검객이 박에 맞춰 벤다.
-    /// toss(과일)는 1박, high(대나무)는 2박 뒤에 도착한다. draw는 1박 뒤에 칼자루를 잡고 버티다가
-    /// tick 다음 박에 떼어 발도하며, 통나무는 바로 그 순간 도착한다. 징(gong)이 울리면 같은 리듬을 4박 뒤에 따라 벤다.
+    /// toss(과일)는 1박, high(대나무)는 2박 뒤에 도착한다. draw는 1박 뒤에 통나무가 링 안으로 들어와 멈추고,
+    /// 누르고 있는 동안 검객이 마구 베다가 tick 다음 박에 떼면 통나무가 조각조각 흩어진다.
+    /// 징(gong)이 울리면 같은 리듬을 4박 뒤에 따라 벤다.
     /// </summary>
     public sealed class SliceStagePresenter : StagePresenter
     {
-        enum ItemState { Waiting, Flying, Cut, Dropped }
+        enum ItemState { Waiting, Flying, Shelved, Held, Cut, Dropped }
 
         sealed class Item
         {
@@ -21,6 +22,9 @@ namespace IWannabe.Stages.Slice
             public TimelineNote Note;
             public double ArrivalBeat;
             public ItemState State;
+            /// <summary>따라 베기 등롱: 징이 울리면 선반에 줄섰다가 응답 박에 떨어진다.</summary>
+            public bool Echo;
+            public Vector3 Slot;
             public Vector3 Scale;
             public float ArcHeight;
             public float SpinPerBeat;
@@ -54,6 +58,11 @@ namespace IWannabe.Stages.Slice
         [SerializeField] Transform gong;
         [SerializeField] SpriteRenderer itemTemplate;
         [SerializeField] SpriteRenderer effectTemplate;
+        [Tooltip("draw 홀드 동안 뗄 때까지 차오르는 링. 통나무가 이 안에 멈춘다. 베는 지점에 둔다.")]
+        [SerializeField] ProgressRing holdRing;
+        [Tooltip("따라 베기 등롱이 응답 리듬 모양대로 줄서는 선반의 양 끝.")]
+        [SerializeField] Transform echoShelfLeft;
+        [SerializeField] Transform echoShelfRight;
 
         [Header("Sprites")]
         [SerializeField] Sprite roundSprite;
@@ -67,9 +76,17 @@ namespace IWannabe.Stages.Slice
         [SerializeField] Color streakColor = Color.white;
         [SerializeField] Color barelyColor = new Color(0.6f, 0.6f, 0.65f);
         [SerializeField] Color gongColor = new Color(0.91f, 0.77f, 0.42f);
+        [SerializeField] Color lanternColor = new Color(1f, 0.72f, 0.01f);
         [SerializeField] float swordRestAngle = -35f;
         [SerializeField] float swordSlashAngle = 110f;
-        [SerializeField] float swordStanceAngle = -75f;
+
+        [Header("Hold Flurry")]
+        [Tooltip("홀드 중 칼자국이 새로 생기는 간격(초).")]
+        [SerializeField, Min(0.03f)] float flurryInterval = 0.08f;
+        [Tooltip("홀드 중 칼을 휘두르는 빠르기(초당 왕복).")]
+        [SerializeField, Min(1f)] float flurrySwingsPerSecond = 7f;
+        [Tooltip("정확히 뗐을 때 통나무가 흩어지는 조각 수. 아슬아슬이면 절반.")]
+        [SerializeField, Range(3, 16)] int shatterPieces = 9;
 
         [Header("Feedback Sounds")]
         [SerializeField] AudioClip slashSound;
@@ -90,7 +107,10 @@ namespace IWannabe.Stages.Slice
         double swingStart = double.NegativeInfinity;
         double masterToss = double.NegativeInfinity;
         double gongHit = double.NegativeInfinity;
-        bool inStance;
+        bool chopping;
+        double nextFlurryTime;
+        bool flurrySoundToggle;
+        HoldRingDriver ringDriver;
 
         public override IEnumerable<AudioClip> AudioClips => new[] { slashSound, bigSlashSound, barelySound, missSound, whiffSound };
 
@@ -102,31 +122,37 @@ namespace IWannabe.Stages.Slice
             swordsmanScale = swordsman.localScale;
             gongScale = gong.localScale;
             SetSword(swordRestAngle);
+            ringDriver = new HoldRingDriver(holdRing, gongColor, barelyColor, Color.gray);
         }
 
         public override void OnPatternSpawn(TimelinePattern pattern)
         {
             foreach (var cue in pattern.Cues)
             {
-                if (cue.TargetNoteId < 0 || cue.CueId == SliceCues.Gong) continue;
+                if (cue.TargetNoteId < 0) continue;
 
                 var note = Context.Timeline.Notes[cue.TargetNoteId];
+                if (cue.CueId == SliceCues.Gong)
+                {
+                    SpawnEchoLantern(pattern, cue, note);
+                    continue;
+                }
+
                 bool draw = cue.CueId == SliceCues.Draw;
                 bool high = cue.CueId == SliceCues.High;
-                // 발도(draw)는 칼을 뽑는 순간, 즉 뗌 시점에 통나무가 도착한다.
-                double arrival = draw ? note.EndBeat : note.Beat;
-                float flight = (float)(arrival - cue.Beat);
+                // 모든 물건은 누르는 박에 베는 지점(링 중심)에 도착한다. 통나무는 그 자리에 멈춰 난도질당한다.
+                float flight = (float)(note.Beat - cue.Beat);
 
                 var item = new Item
                 {
                     Sprite = RentItem(),
                     Cue = cue,
                     Note = note,
-                    ArrivalBeat = arrival,
+                    ArrivalBeat = note.Beat,
                     State = ItemState.Waiting,
-                    Scale = draw ? new Vector3(1.3f, 0.5f, 1f) : high ? new Vector3(0.32f, 1.3f, 1f) : new Vector3(0.6f, 0.6f, 1f),
-                    ArcHeight = draw ? 1.1f * flight : high ? 1.4f * flight + 1.5f : 1.5f * flight,
-                    SpinPerBeat = draw ? 40f : high ? -260f : -180f,
+                    Scale = draw ? new Vector3(1.1f, 0.45f, 1f) : high ? new Vector3(0.32f, 1.3f, 1f) : new Vector3(0.6f, 0.6f, 1f),
+                    ArcHeight = draw ? 1.6f * flight : high ? 1.4f * flight + 1.5f : 1.5f * flight,
+                    SpinPerBeat = draw ? 90f : high ? -260f : -180f,
                 };
                 item.Sprite.sprite = draw || high ? stickSprite : roundSprite;
                 item.Sprite.color = draw ? logColor : high ? bambooColor : fruitColor;
@@ -136,6 +162,28 @@ namespace IWannabe.Stages.Slice
                 items.Add(item);
                 itemByNote[note.Id] = item;
             }
+        }
+
+        /// <summary>징이 울릴 때 나타나 선반에 줄서는 등롱. 선반 위 위치가 곧 응답 리듬이다.</summary>
+        void SpawnEchoLantern(TimelinePattern pattern, TimelineCue cue, TimelineNote note)
+        {
+            var item = new Item
+            {
+                Sprite = RentItem(),
+                Cue = cue,
+                Note = note,
+                ArrivalBeat = note.Beat,
+                State = ItemState.Waiting,
+                Echo = true,
+                Slot = EchoShelf.Slot(echoShelfLeft.position, echoShelfRight.position, note.Beat, pattern.AnchorBeat, note.Beat - cue.Beat),
+                Scale = new Vector3(0.5f, 0.65f, 1f),
+            };
+            item.Sprite.sprite = stickSprite;
+            item.Sprite.color = lanternColor;
+            item.Sprite.transform.localScale = item.Scale;
+            item.Sprite.gameObject.SetActive(false);
+            items.Add(item);
+            itemByNote[note.Id] = item;
         }
 
         public override void OnCue(TimelineCue cue)
@@ -152,18 +200,20 @@ namespace IWannabe.Stages.Slice
             else
             {
                 masterToss = cue.Time;
+                if (cue.CueId == SliceCues.Draw && cue.TargetNoteId >= 0)
+                    ringDriver.Begin(Context.Timeline.Notes[cue.TargetNoteId]);
             }
         }
 
         public override void OnInputPressed(double songTime)
         {
-            // 발도 자세 중에는 누름이 아니라 뗌이 칼을 휘두른다.
-            if (!inStance) swingStart = songTime;
+            // 난도질 중에는 칼이 계속 움직이므로 누름마다 따로 휘두르지 않는다.
+            if (!chopping) swingStart = songTime;
         }
 
         public override void OnInputReleased(double songTime)
         {
-            if (inStance) swingStart = songTime;
+            if (chopping) swingStart = songTime; // 마무리 일격
         }
 
         public override void OnJudged(NoteJudgement judgement)
@@ -171,6 +221,7 @@ namespace IWannabe.Stages.Slice
             itemByNote.TryGetValue(judgement.Note.Id, out var item);
             double now = Context.Conductor.SongTime;
             bool perfect = judgement.Grade == JudgeGrade.Perfect;
+            ringDriver.OnJudged(judgement, now);
 
             if (judgement.Phase == NotePhase.Press)
             {
@@ -183,7 +234,16 @@ namespace IWannabe.Stages.Slice
 
                 if (judgement.Note.Type == NoteType.Hold)
                 {
-                    inStance = true; // 통나무는 아직 날아오는 중: 뗌 판정 때 벤다
+                    // 통나무를 링 안에 붙잡고 뗄 때까지 난도질한다.
+                    chopping = true;
+                    nextFlurryTime = now;
+                    if (item != null)
+                    {
+                        item.Sprite.gameObject.SetActive(true);
+                        item.State = ItemState.Held;
+                        item.StateTime = now;
+                    }
+                    Context.Sfx.PlayNow(perfect ? slashSound : barelySound, 0.6f);
                     return;
                 }
 
@@ -193,34 +253,57 @@ namespace IWannabe.Stages.Slice
                 return;
             }
 
-            inStance = false;
+            chopping = false;
             if (judgement.Grade == JudgeGrade.Miss)
             {
                 if (item != null && item.State != ItemState.Dropped) Drop(item, now);
                 if (judgement.HasInput) Context.Sfx.PlayNow(missSound, 0.5f);
                 return;
             }
-            if (item != null) Cut(item, now, perfect, true);
+            if (item != null) Shatter(item, now, perfect);
             Context.Sfx.PlayNow(perfect ? bigSlashSound : barelySound);
         }
 
         public override void OnWhiff(double songTime) => Context.Sfx.PlayNow(whiffSound, 0.6f);
 
-        public override void OnStageFinished(ScoreTracker score) => inStance = false;
+        public override void OnStageFinished(ScoreTracker score) => chopping = false;
 
         public override void Tick(double songTime, double songBeat)
         {
             float bounce = songBeat >= 0 ? Mathf.Exp(-6f * (float)(songBeat - Math.Floor(songBeat))) : 0f;
             master.localScale = Squash(masterScale, 0.05f * bounce + 0.12f * Pulse(songTime - masterToss, 0.2));
-            float stance = inStance ? 0.12f : 0f;
-            swordsman.localScale = Squash(swordsmanScale, 0.05f * bounce + stance);
+            float flurry = chopping ? 0.06f * Mathf.Abs(Mathf.Sin((float)(songTime * Math.PI * flurrySwingsPerSecond))) : 0f;
+            swordsman.localScale = Squash(swordsmanScale, 0.05f * bounce + flurry);
             gong.localScale = gongScale * (1f + 0.25f * Pulse(songTime - gongHit, 0.25));
 
-            float baseAngle = inStance ? swordStanceAngle : swordRestAngle;
-            SetSword(Mathf.Lerp(baseAngle, swordSlashAngle, Pulse(songTime - swingStart, SwingSeconds)));
+            if (chopping)
+            {
+                // 칼이 쉬지 않고 왕복하며, 일정 간격으로 통나무 위에 무작위 칼자국을 남긴다.
+                float sweep = 0.5f + 0.5f * Mathf.Sin((float)(songTime * Math.PI * 2.0 * flurrySwingsPerSecond));
+                SetSword(Mathf.Lerp(swordRestAngle, swordSlashAngle, sweep));
+                UpdateFlurry(songTime);
+            }
+            else
+            {
+                SetSword(Mathf.Lerp(swordRestAngle, swordSlashAngle, Pulse(songTime - swingStart, SwingSeconds)));
+            }
 
             UpdateItems(songTime, songBeat);
             UpdateEffects(songTime);
+            ringDriver.Tick(songTime, songBeat);
+        }
+
+        void UpdateFlurry(double songTime)
+        {
+            if (songTime - nextFlurryTime > 0.5) nextFlurryTime = songTime; // 일시정지 등으로 밀렸으면 몰아서 만들지 않는다
+            while (songTime >= nextFlurryTime)
+            {
+                var offset = new Vector3(UnityEngine.Random.Range(-0.35f, 0.35f), UnityEngine.Random.Range(-0.25f, 0.25f), 0f);
+                SpawnSlashMark(strikePoint.position + offset, UnityEngine.Random.Range(0f, 180f), UnityEngine.Random.Range(1.2f, 2.2f), nextFlurryTime);
+                flurrySoundToggle = !flurrySoundToggle;
+                if (flurrySoundToggle) Context.Sfx.PlayNow(whiffSound, 0.25f);
+                nextFlurryTime += flurryInterval;
+            }
         }
 
         void SetSword(float angle) => swordPivot.localRotation = Quaternion.Euler(0f, 0f, angle);
@@ -235,9 +318,20 @@ namespace IWannabe.Stages.Slice
                 {
                     case ItemState.Waiting:
                         if (songBeat < item.Cue.Beat) break;
-                        item.State = ItemState.Flying;
                         item.Sprite.gameObject.SetActive(true);
+                        if (item.Echo)
+                        {
+                            item.State = ItemState.Shelved;
+                            goto case ItemState.Shelved;
+                        }
+                        item.State = ItemState.Flying;
                         goto case ItemState.Flying;
+
+                    case ItemState.Shelved:
+                        t.position = EchoShelf.Position(gong.position, item.Slot, strikePoint.position, songBeat, item.Cue.Beat, item.Note.Beat);
+                        t.rotation = Quaternion.Euler(0f, 0f, 6f * Mathf.Sin((float)(songBeat * Math.PI)));
+                        if (songBeat - item.Note.Beat > 2.0) Despawn(i);
+                        break;
 
                     case ItemState.Flying:
                     {
@@ -248,6 +342,19 @@ namespace IWannabe.Stages.Slice
                         t.position = p;
                         t.rotation = Quaternion.Euler(0f, 0f, item.SpinPerBeat * (float)(songBeat - item.Cue.Beat));
                         if (u > 3f) Despawn(i);
+                        break;
+                    }
+
+                    case ItemState.Held:
+                    {
+                        // 링 안에 붙잡힌 채 칼을 맞아 떨리고, 링이 차는 만큼 조금씩 깎여 작아진다.
+                        double span = Math.Max(1e-3, item.Note.EndBeat - item.Note.Beat);
+                        float progress = Mathf.Clamp01((float)((songBeat - item.Note.Beat) / span));
+                        float time = (float)songTime;
+                        t.position = strikePoint.position + new Vector3(0.05f * Mathf.Sin(time * 53f), 0.05f * Mathf.Sin(time * 47f), 0f);
+                        t.rotation = Quaternion.Euler(0f, 0f, 6f * Mathf.Sin(time * 31f));
+                        t.localScale = item.Scale * (1f - 0.25f * progress);
+                        if (songBeat - item.Note.EndBeat > 2.0) Despawn(i);
                         break;
                     }
 
@@ -284,6 +391,32 @@ namespace IWannabe.Stages.Slice
             SpawnPiece(item.Sprite.sprite, position + right, t.rotation, half, color, new Vector3(3f, 5f, 0f) * spread, -360f * spread, now);
             SpawnStreak(position, perfect, big, now);
             if (big) SpawnRing(position, streakColor, 0.8f, 3f, 0.3f, now);
+
+            item.State = ItemState.Cut;
+            item.Sprite.gameObject.SetActive(false);
+        }
+
+        /// <summary>난도질한 통나무를 여러 조각으로 흩뿌린다. 아슬아슬이면 조각이 적고 덜 퍼진다.</summary>
+        void Shatter(Item item, double now, bool perfect)
+        {
+            var t = item.Sprite.transform;
+            var center = t.position;
+            var size = t.localScale;
+            int count = perfect ? shatterPieces : Mathf.Max(3, shatterPieces / 2);
+            float spread = perfect ? 1f : 0.6f;
+            var color = perfect ? item.Sprite.color : Color.Lerp(item.Sprite.color, barelyColor, 0.5f);
+
+            for (int k = 0; k < count; k++)
+            {
+                float along = k / (float)(count - 1) - 0.5f; // 통나무 길이 방향 -0.5~0.5
+                var position = center + t.right * (along * size.x) + Vector3.up * UnityEngine.Random.Range(-0.1f, 0.1f);
+                var scale = new Vector3(size.x / count * UnityEngine.Random.Range(1f, 1.6f), size.y * UnityEngine.Random.Range(0.5f, 1f), 1f);
+                var velocity = new Vector3(along * 9f + UnityEngine.Random.Range(-1.5f, 1.5f), UnityEngine.Random.Range(3f, 8f), 0f) * spread;
+                var rotation = Quaternion.Euler(0f, 0f, UnityEngine.Random.Range(0f, 360f));
+                SpawnPiece(item.Sprite.sprite, position, rotation, scale, color, velocity, UnityEngine.Random.Range(-720f, 720f) * spread, now);
+            }
+            SpawnStreak(center, perfect, true, now);
+            SpawnRing(center, streakColor, 0.8f, 3f, 0.3f, now);
 
             item.State = ItemState.Cut;
             item.Sprite.gameObject.SetActive(false);
@@ -337,6 +470,18 @@ namespace IWannabe.Stages.Slice
                 Sprite = fx, StartTime = now, Duration = big ? 0.3f : 0.18f,
                 FromScale = new Vector3(scale.x * 0.4f, scale.y, 1f), ToScale = scale,
                 Color = perfect ? streakColor : barelyColor,
+            });
+        }
+
+        /// <summary>홀드 중 난도질 칼자국. 짧게 그어졌다가 사라진다.</summary>
+        void SpawnSlashMark(Vector3 position, float angle, float length, double startTime)
+        {
+            var fx = RentEffect(stickSprite, position, Quaternion.Euler(0f, 0f, angle));
+            effects.Add(new Fx
+            {
+                Sprite = fx, StartTime = startTime, Duration = 0.12f,
+                FromScale = new Vector3(length * 0.3f, 0.06f, 1f), ToScale = new Vector3(length, 0.06f, 1f),
+                Color = streakColor,
             });
         }
 
