@@ -4,8 +4,10 @@
     "references": [
         "IWannabe.Rhythm.Core",
         "IWannabe.Rhythm",
+        "IWannabe.Otamaton",
         "Unity.Addressables",
         "Unity.ResourceManager",
+        "Unity.InputSystem",
         "UnityEngine.UI"
     ],
     "includePlatforms": [],

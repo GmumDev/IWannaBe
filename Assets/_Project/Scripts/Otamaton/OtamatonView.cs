@@ -24,7 +24,13 @@ namespace IWannabe.Otamaton
         double openUntil = double.NegativeInfinity;
         double hitUntil = double.NegativeInfinity;
 
-        void Awake() => Rest();
+        void Awake()
+        {
+            // 꾸미기에서 고른 모습이 있으면 그걸 쓰고, 없으면 프리팹에 넣어 둔 기본 모습을 쓴다.
+            if (OtamatonAppearance.Body != null) body = OtamatonAppearance.Body;
+            if (OtamatonAppearance.Eyes != null) eyes = OtamatonAppearance.Eyes;
+            Rest();
+        }
 
         /// <summary>입력원이 눌렸을 때. 여러 입력원을 겹쳐 누르면 모두 뗄 때까지 입을 벌리고 있다.</summary>
         public void Press(double time)
@@ -51,8 +57,8 @@ namespace IWannabe.Otamaton
 
         void Show(bool open, bool hit)
         {
-            bodyRenderer.sprite = open ? body.open : body.close;
-            eyeRenderer.sprite = hit ? (open ? eyes.hitOpen : eyes.hitClose) : (open ? eyes.open : eyes.close);
+            bodyRenderer.sprite = body.Pick(open);
+            eyeRenderer.sprite = eyes.Pick(open, hit);
         }
     }
 }

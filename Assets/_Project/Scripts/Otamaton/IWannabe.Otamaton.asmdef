@@ -1,7 +1,9 @@
 {
     "name": "IWannabe.Otamaton",
     "rootNamespace": "IWannabe.Otamaton",
-    "references": [],
+    "references": [
+        "UnityEngine.UI"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

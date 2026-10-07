@@ -23,6 +23,8 @@ namespace IWannabe.EditorTools
         public const string Scenes = Root + "/Scenes";
         public const string Settings = Data + "/RhythmSettings.asset";
         public const string Catalog = Data + "/StageCatalog.asset";
+        public const string CustomizationData = Data + "/Customization";
+        public const string CustomizationCatalog = CustomizationData + "/CustomizationCatalog.asset";
         public const string AppRoot = AppPrefabs + "/AppRoot.prefab";
         public const string LobbyScene = Scenes + "/Lobby.unity";
         public const string StageScene = Scenes + "/StagePlay.unity";

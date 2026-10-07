@@ -1,0 +1,97 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8c95c38aee13fc34889a141d7babd0dc, type: 3}
+  m_Name: CustomizationCatalog
+  m_EditorClassIdentifier: IWannabe.App::IWannabe.App.CustomizationCatalog
+  bodies:
+  - id: default
+    displayName: "\uAE30\uBCF8"
+    unlockStageId: 
+    icon: {fileID: 0}
+    parts:
+      close: {fileID: 21300000, guid: 943c289f4b6281947b6b5b06729bdbca, type: 3}
+      open: {fileID: 21300000, guid: f0e656bb34307e74097a315c313919e7, type: 3}
+  eyes:
+  - id: default
+    displayName: "\uAE30\uBCF8"
+    unlockStageId: 
+    icon: {fileID: 0}
+    parts:
+      close: {fileID: 21300000, guid: 9c6458dfe87e6c34882922baaef55fb9, type: 3}
+      open: {fileID: 21300000, guid: a6fe3d92ee53a0c4181176e03685d61e, type: 3}
+      hitClose: {fileID: 21300000, guid: bef13f35282d9b14b99adb9e8d109772, type: 3}
+      hitOpen: {fileID: 21300000, guid: c56a912ca2d940d4181bb69ce7997832, type: 3}
+  backgrounds:
+  - id: cream
+    displayName: "\uD06C\uB9BC"
+    unlockStageId: 
+    icon: {fileID: 0}
+    color: {r: 0.99215686, g: 0.9411765, b: 0.8352941, a: 1}
+    image:
+      m_AssetGUID: 
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
+  - id: sky
+    displayName: "\uD558\uB298"
+    unlockStageId: 
+    icon: {fileID: 0}
+    color: {r: 0.8392157, g: 0.91764706, b: 0.972549, a: 1}
+    image:
+      m_AssetGUID: 
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
+  - id: sunset
+    displayName: "\uB178\uC744"
+    unlockStageId: slice
+    icon: {fileID: 0}
+    color: {r: 0.972549, g: 0.827451, b: 0.77254903, a: 1}
+    image:
+      m_AssetGUID: 
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
+  bgms:
+  - id: none
+    displayName: "\uC5C6\uC74C"
+    unlockStageId: 
+    icon: {fileID: 0}
+    clip:
+      m_AssetGUID: 
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
+  - id: hitback
+    displayName: "\uBC1B\uC544\uCE58\uAE30"
+    unlockStageId: hitback
+    icon: {fileID: 0}
+    clip:
+      m_AssetGUID: 7a817d68c2627dd44b769d0734688f8f
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
+  - id: slice
+    displayName: "\uBCA0\uAE30"
+    unlockStageId: slice
+    icon: {fileID: 0}
+    clip:
+      m_AssetGUID: 392ddddfb70121c4cbebdc5a01c6d0c4
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0

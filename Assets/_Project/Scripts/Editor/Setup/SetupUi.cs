@@ -1,3 +1,4 @@
+using IWannabe.Otamaton;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -94,12 +95,7 @@ namespace IWannabe.EditorTools
             var image = Panel(rect, Color.white, true);
             var button = rect.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
-            var colors = button.colors;
-            colors.normalColor = Color.white;
-            colors.highlightedColor = new Color(1f, 0.88f, 0.54f);
-            colors.selectedColor = new Color(1f, 0.88f, 0.54f);
-            colors.pressedColor = new Color(0.96f, 0.64f, 0.38f);
-            button.colors = colors;
+            ApplyButtonColors(button);
 
             var layout = rect.gameObject.AddComponent<LayoutElement>();
             layout.preferredWidth = size.x;
@@ -107,6 +103,72 @@ namespace IWannabe.EditorTools
 
             Label(Stretch("Label", rect), text, fontSize, TextAnchor.MiddleCenter, Ink, FontStyle.Bold);
             return button;
+        }
+
+        public static void ApplyButtonColors(Button button)
+        {
+            var colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1f, 0.88f, 0.54f);
+            colors.selectedColor = new Color(1f, 0.88f, 0.54f);
+            colors.pressedColor = new Color(0.96f, 0.64f, 0.38f);
+            button.colors = colors;
+        }
+
+        /// <summary>세로로만 스크롤되는 영역. 내용(Content)은 위에 붙어 자식 크기만큼 늘어나고, 영역 밖은 잘린다.</summary>
+        public static ScrollRect VerticalScroll(RectTransform rect, out RectTransform content)
+        {
+            // 빈 곳을 끌어도 스크롤되도록 투명한 바탕으로 입력을 받는다.
+            rect.gameObject.AddComponent<Image>().color = Color.clear;
+            var scroll = rect.gameObject.AddComponent<ScrollRect>();
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Elastic;
+            scroll.scrollSensitivity = 40f;
+
+            var viewport = Stretch("Viewport", rect);
+            viewport.gameObject.AddComponent<RectMask2D>();
+            content = Rect("Content", viewport, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), Vector2.zero, Vector2.zero);
+            content.anchorMin = new Vector2(0f, 1f);
+            content.anchorMax = new Vector2(1f, 1f);
+            content.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            scroll.viewport = viewport;
+            scroll.content = content;
+            return scroll;
+        }
+
+        /// <summary>자식을 위에서부터 쌓고 너비를 가득 채우는 세로 레이아웃. 높이는 자식의 선호 높이를 따른다.</summary>
+        public static VerticalLayoutGroup Stack(RectTransform rect, float spacing)
+        {
+            var layout = rect.gameObject.AddComponent<VerticalLayoutGroup>();
+            layout.spacing = spacing;
+            layout.childAlignment = TextAnchor.UpperCenter;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+            return layout;
+        }
+
+        /// <summary>몸통·눈 Image 두 장을 겹친 <see cref="OtamatonImage"/>. 눈이 뒤 형제라 몸통 앞에 그려진다.</summary>
+        public static OtamatonImage OtamatonUi(RectTransform rect, bool raycast)
+        {
+            var view = rect.gameObject.AddComponent<OtamatonImage>();
+            var body = OtamatonPart(rect, "Body", raycast);
+            var eye = OtamatonPart(rect, "Eye", false);
+            SetupUtil.Assign(view, ("bodyImage", body), ("eyeImage", eye));
+            return view;
+        }
+
+        static Image OtamatonPart(RectTransform parent, string name, bool raycast)
+        {
+            // 이미지는 실행 중에 장착한 파츠로 채운다. 씬이 직접 참조하면 번들과 앱 데이터에 두 벌이 된다.
+            var image = Stretch(name, parent).gameObject.AddComponent<Image>();
+            image.preserveAspect = true;
+            image.raycastTarget = raycast;
+            image.enabled = false;
+            return image;
         }
 
         public static VerticalLayoutGroup Column(RectTransform rect, float spacing)

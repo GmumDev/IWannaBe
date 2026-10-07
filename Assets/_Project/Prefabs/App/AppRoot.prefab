@@ -604,6 +604,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6812961191855396363}
   - component: {fileID: 3819456724227444662}
+  - component: {fileID: 2094515364304376618}
   m_Layer: 0
   m_Name: AppRoot
   m_TagString: Untagged
@@ -643,3 +644,21 @@ MonoBehaviour:
   lobbySceneName: Lobby
   stageSceneName: StagePlay
   minimumLoadingSeconds: 0.5
+--- !u!114 &2094515364304376618
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5287268985771064620}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8ef1f3a0e2e34c24bb3842d2dc46521c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: IWannabe.App::IWannabe.App.Wardrobe
+  catalog:
+    m_AssetGUID: 801d6d4f92d3a974b863dc24067ff75e
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_SubObjectGUID: 
+    m_EditorAssetChanged: 0

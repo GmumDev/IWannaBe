@@ -9,6 +9,8 @@ namespace IWannabe.Otamaton
     {
         public Sprite close;
         public Sprite open;
+
+        public Sprite Pick(bool mouthOpen) => mouthOpen ? open : close;
     }
 
     /// <summary>눈 파츠. 몸통의 입 모양에 맞춘 두 가지와, miss가 났을 때 잠시 바뀌는 Hit 두 가지.</summary>
@@ -19,5 +21,7 @@ namespace IWannabe.Otamaton
         public Sprite open;
         public Sprite hitClose;
         public Sprite hitOpen;
+
+        public Sprite Pick(bool mouthOpen, bool hit) => hit ? (mouthOpen ? hitOpen : hitClose) : (mouthOpen ? open : close);
     }
 }
