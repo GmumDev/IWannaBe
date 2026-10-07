@@ -10,6 +10,8 @@ namespace IWannabe.EditorTools
     sealed class StagePrefabKit
     {
         public ShapeSprites Shapes;
+        /// <summary>플레이어 캐릭터의 기본 파츠.</summary>
+        public OtamatonSprites Otamaton;
         public Material SpriteMaterial;
     }
 

@@ -68,11 +68,9 @@ namespace IWannabe.EditorTools
             Shape(gong, "Face", shapes.Circle, material, Vector2.zero, new Vector2(0.85f, 0.85f), Hex("E9C46A", 0.55f), 3);
 
             var swordsman = Node(t, "Swordsman", new Vector2(4.8f, -2.6f));
-            Shape(swordsman, "Body", shapes.Circle, material, new Vector2(0f, 1f), new Vector2(2f, 2f), Hex("E63946"), 5);
-            Shape(swordsman, "Headband", shapes.Square, material, new Vector2(0f, 1.55f), new Vector2(1.9f, 0.16f), Hex("F1FAEE"), 6);
-            Shape(swordsman, "EyeL", shapes.Circle, material, new Vector2(-0.6f, 1.3f), new Vector2(0.2f, 0.2f), Hex("2B2D42"), 7);
-            Shape(swordsman, "EyeR", shapes.Circle, material, new Vector2(-0.2f, 1.3f), new Vector2(0.2f, 0.2f), Hex("2B2D42"), 7);
-            var swordPivot = Node(swordsman, "SwordPivot", new Vector2(-0.8f, 1f));
+            var otamaton = OtamatonRig(swordsman, "Otamaton", new Vector2(0f, 1f), kit.Otamaton, material, 5);
+            // 칼자루는 눈·입을 가리지 않도록 몸 바깥 왼쪽에 둔다.
+            var swordPivot = Node(swordsman, "SwordPivot", new Vector2(-1.2f, 0.85f));
             Shape(swordPivot, "Blade", shapes.Square, material, new Vector2(0f, 1f), new Vector2(0.1f, 1.9f), Hex("EDF2F4"), 8);
             Shape(swordPivot, "Hilt", shapes.Square, material, Vector2.zero, new Vector2(0.2f, 0.4f), Hex("6D4C41"), 8);
             var strike = Node(swordsman, "StrikePoint", new Vector2(-2.1f, 1.7f));
@@ -88,7 +86,7 @@ namespace IWannabe.EditorTools
             var shelfRight = Node(t, "EchoShelfRight", new Vector2(3.4f, 2.2f));
 
             Assign(presenter,
-                ("master", master), ("swordsman", swordsman), ("swordPivot", swordPivot),
+                ("master", master), ("swordsman", swordsman), ("otamaton", otamaton), ("swordPivot", swordPivot),
                 ("releasePoint", release), ("strikePoint", strike), ("gong", gong),
                 ("itemTemplate", item), ("effectTemplate", effect),
                 ("holdRing", ring), ("echoShelfLeft", shelfLeft), ("echoShelfRight", shelfRight),

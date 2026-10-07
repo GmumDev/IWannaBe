@@ -57,10 +57,9 @@ namespace IWannabe.EditorTools
             var release = Node(pitcher, "ReleasePoint", new Vector2(1.1f, 1.6f));
 
             var batter = Node(t, "Batter", new Vector2(5.4f, -2.6f));
-            Shape(batter, "Body", shapes.Circle, material, new Vector2(0f, 1f), new Vector2(2f, 2f), Hex("2A9D8F"), 5);
-            Shape(batter, "EyeL", shapes.Circle, material, new Vector2(-0.62f, 1.35f), new Vector2(0.22f, 0.22f), Hex("264653"), 6);
-            Shape(batter, "EyeR", shapes.Circle, material, new Vector2(-0.2f, 1.35f), new Vector2(0.22f, 0.22f), Hex("264653"), 6);
-            var pivot = Node(batter, "PaddlePivot", new Vector2(-0.95f, 1f));
+            var otamaton = OtamatonRig(batter, "Otamaton", new Vector2(0f, 1f), kit.Otamaton, material, 5);
+            // 패들은 쉬는 자세에서도 눈·입을 가리지 않도록 몸 바깥 왼쪽에 둔다.
+            var pivot = Node(batter, "PaddlePivot", new Vector2(-1.2f, 0.9f));
             Shape(pivot, "Paddle", shapes.Square, material, new Vector2(0f, 0.8f), new Vector2(0.28f, 1.6f), Hex("6D4C41"), 7);
             var hit = Node(batter, "HitPoint", new Vector2(-1.7f, 1.9f));
 
@@ -75,7 +74,7 @@ namespace IWannabe.EditorTools
             var shelfRight = Node(t, "EchoShelfRight", new Vector2(4.2f, 2f));
 
             Assign(presenter,
-                ("pitcher", pitcher), ("batter", batter), ("paddlePivot", pivot),
+                ("pitcher", pitcher), ("batter", batter), ("otamaton", otamaton), ("paddlePivot", pivot),
                 ("releasePoint", release), ("hitPoint", hit),
                 ("ballTemplate", ball), ("flashTemplate", flash),
                 ("holdRing", ring), ("echoShelfLeft", shelfLeft), ("echoShelfRight", shelfRight),

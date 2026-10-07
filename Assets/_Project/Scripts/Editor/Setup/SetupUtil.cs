@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using IWannabe.Otamaton;
 using IWannabe.Stages;
 using UnityEditor;
 using UnityEngine;
@@ -14,6 +15,7 @@ namespace IWannabe.EditorTools
         public const string Music = Root + "/Music";
         public const string Sfx = Root + "/SFX";
         public const string Shapes = Root + "/Textures/Shapes";
+        public const string Otamaton = Root + "/Textures/Otamaton";
         public const string Data = Root + "/Data";
         public const string StageData = Data + "/Stages";
         public const string StagePrefabs = Root + "/Prefabs/Stages";
@@ -47,6 +49,26 @@ namespace IWannabe.EditorTools
             var asset = AssetDatabase.LoadAssetAtPath<T>(path);
             if (asset == null) throw new FileNotFoundException($"{typeof(T).Name} 에셋을 찾지 못했습니다.", path);
             return asset;
+        }
+
+        /// <summary>이미지를 단일 스프라이트로 임포트하도록 맞추고 스프라이트를 돌려준다. 설정이 같으면 다시 임포트하지 않는다.</summary>
+        public static Sprite LoadSprite(string path, float pixelsPerUnit)
+        {
+            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (importer == null) throw new FileNotFoundException("이미지 파일이 없습니다.", path);
+            if (importer.textureType != TextureImporterType.Sprite || !Mathf.Approximately(importer.spritePixelsPerUnit, pixelsPerUnit))
+            {
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.spritePixelsPerUnit = pixelsPerUnit;
+                importer.mipmapEnabled = false;
+                importer.alphaIsTransparency = true;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
+            }
+            return LoadRequired<Sprite>(path);
         }
 
         public static void EnsureFolder(string path)
@@ -89,6 +111,21 @@ namespace IWannabe.EditorTools
             renderer.color = color;
             renderer.sortingOrder = order;
             return renderer;
+        }
+
+        /// <summary>몸통 위에 눈을 겹친 <see cref="OtamatonView"/>를 만든다. 눈은 몸통보다 한 단계 앞(order + 1)에 그린다.</summary>
+        public static OtamatonView OtamatonRig(Transform parent, string name, Vector2 position, OtamatonSprites parts, Material material, int order)
+        {
+            var node = Node(parent, name, position);
+            var view = node.gameObject.AddComponent<OtamatonView>();
+            var body = Shape(node, "Body", parts.Body.close, material, Vector2.zero, Vector2.one, Color.white, order);
+            var eye = Shape(node, "Eye", parts.Eyes.close, material, Vector2.zero, Vector2.one, Color.white, order + 1);
+            Assign(view,
+                ("bodyRenderer", body), ("eyeRenderer", eye),
+                ("body.close", parts.Body.close), ("body.open", parts.Body.open),
+                ("eyes.close", parts.Eyes.close), ("eyes.open", parts.Eyes.open),
+                ("eyes.hitClose", parts.Eyes.hitClose), ("eyes.hitOpen", parts.Eyes.hitOpen));
+            return view;
         }
 
         /// <summary>바탕 원과 진행 호(LineRenderer 두 개)로 된 <see cref="ProgressRing"/>을 만든다. 처음엔 꺼져 있다.</summary>

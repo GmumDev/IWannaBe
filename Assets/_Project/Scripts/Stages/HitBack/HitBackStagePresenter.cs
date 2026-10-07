@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using IWannabe.Otamaton;
 using IWannabe.Rhythm;
 using UnityEngine;
 
@@ -49,6 +50,8 @@ namespace IWannabe.Stages.HitBack
         [Header("Rig")]
         [SerializeField] Transform pitcher;
         [SerializeField] Transform batter;
+        [Tooltip("타자 역할의 플레이어 캐릭터. 입력 중엔 입을 벌리고, miss가 나면 잠시 Hit 눈이 된다.")]
+        [SerializeField] OtamatonView otamaton;
         [SerializeField] Transform paddlePivot;
         [SerializeField] Transform releasePoint;
         [SerializeField] Transform hitPoint;
@@ -168,10 +171,15 @@ namespace IWannabe.Stages.HitBack
                 ringDriver.Begin(Context.Timeline.Notes[cue.TargetNoteId]);
         }
 
-        public override void OnInputPressed(double songTime) => swingStart = songTime;
+        public override void OnInputPressed(double songTime)
+        {
+            swingStart = songTime;
+            otamaton.Press(songTime);
+        }
 
         public override void OnInputReleased(double songTime)
         {
+            otamaton.Release();
             if (holding) swingStart = songTime;
         }
 
@@ -181,6 +189,7 @@ namespace IWannabe.Stages.HitBack
             double now = Context.Conductor.SongTime;
             bool perfect = judgement.Grade == JudgeGrade.Perfect;
             ringDriver.OnJudged(judgement, now);
+            otamaton.Judged(judgement.Grade == JudgeGrade.Miss, now);
 
             if (judgement.Phase == NotePhase.Press)
             {
@@ -225,13 +234,23 @@ namespace IWannabe.Stages.HitBack
 
         public override void OnWhiff(double songTime) => Context.Sfx.PlayNow(whiffSound, 0.5f);
 
-        public override void OnStageFinished(ScoreTracker score) => holding = false;
+        public override void OnPaused(bool paused)
+        {
+            if (paused) otamaton.Rest();
+        }
+
+        public override void OnStageFinished(ScoreTracker score)
+        {
+            holding = false;
+            otamaton.Rest();
+        }
 
         public override void Tick(double songTime, double songBeat)
         {
             float bounce = songBeat >= 0 ? Mathf.Exp(-6f * (float)(songBeat - Math.Floor(songBeat))) : 0f;
             pitcher.localScale = Squash(pitcherScale, 0.06f * bounce + 0.14f * Pulse(songTime - pitcherKick, 0.2));
             batter.localScale = Squash(batterScale, 0.06f * bounce);
+            otamaton.Tick(songTime);
             UpdatePaddle(songTime);
             UpdateBalls(songTime, songBeat);
             UpdateFlashes(songTime);

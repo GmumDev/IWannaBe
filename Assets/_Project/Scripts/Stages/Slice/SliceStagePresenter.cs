@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using IWannabe.Otamaton;
 using IWannabe.Rhythm;
 using UnityEngine;
 
@@ -52,6 +53,8 @@ namespace IWannabe.Stages.Slice
         [Header("Rig")]
         [SerializeField] Transform master;
         [SerializeField] Transform swordsman;
+        [Tooltip("검객 역할의 플레이어 캐릭터. 입력 중엔 입을 벌리고, miss가 나면 잠시 Hit 눈이 된다.")]
+        [SerializeField] OtamatonView otamaton;
         [SerializeField] Transform swordPivot;
         [SerializeField] Transform releasePoint;
         [SerializeField] Transform strikePoint;
@@ -207,12 +210,14 @@ namespace IWannabe.Stages.Slice
 
         public override void OnInputPressed(double songTime)
         {
+            otamaton.Press(songTime);
             // 난도질 중에는 칼이 계속 움직이므로 누름마다 따로 휘두르지 않는다.
             if (!chopping) swingStart = songTime;
         }
 
         public override void OnInputReleased(double songTime)
         {
+            otamaton.Release();
             if (chopping) swingStart = songTime; // 마무리 일격
         }
 
@@ -222,6 +227,7 @@ namespace IWannabe.Stages.Slice
             double now = Context.Conductor.SongTime;
             bool perfect = judgement.Grade == JudgeGrade.Perfect;
             ringDriver.OnJudged(judgement, now);
+            otamaton.Judged(judgement.Grade == JudgeGrade.Miss, now);
 
             if (judgement.Phase == NotePhase.Press)
             {
@@ -266,7 +272,16 @@ namespace IWannabe.Stages.Slice
 
         public override void OnWhiff(double songTime) => Context.Sfx.PlayNow(whiffSound, 0.6f);
 
-        public override void OnStageFinished(ScoreTracker score) => chopping = false;
+        public override void OnPaused(bool paused)
+        {
+            if (paused) otamaton.Rest();
+        }
+
+        public override void OnStageFinished(ScoreTracker score)
+        {
+            chopping = false;
+            otamaton.Rest();
+        }
 
         public override void Tick(double songTime, double songBeat)
         {
@@ -274,6 +289,7 @@ namespace IWannabe.Stages.Slice
             master.localScale = Squash(masterScale, 0.05f * bounce + 0.12f * Pulse(songTime - masterToss, 0.2));
             float flurry = chopping ? 0.06f * Mathf.Abs(Mathf.Sin((float)(songTime * Math.PI * flurrySwingsPerSecond))) : 0f;
             swordsman.localScale = Squash(swordsmanScale, 0.05f * bounce + flurry);
+            otamaton.Tick(songTime);
             gong.localScale = gongScale * (1f + 0.25f * Pulse(songTime - gongHit, 0.25));
 
             if (chopping)

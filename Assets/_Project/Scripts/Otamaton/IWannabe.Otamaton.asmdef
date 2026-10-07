@@ -1,11 +1,7 @@
 {
-    "name": "IWannabe.Stages",
-    "rootNamespace": "IWannabe.Stages",
-    "references": [
-        "IWannabe.Rhythm.Core",
-        "IWannabe.Rhythm",
-        "IWannabe.Otamaton"
-    ],
+    "name": "IWannabe.Otamaton",
+    "rootNamespace": "IWannabe.Otamaton",
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

@@ -6,6 +6,7 @@
         "IWannabe.Rhythm",
         "IWannabe.Rhythm.Editor",
         "IWannabe.Stages",
+        "IWannabe.Otamaton",
         "IWannabe.App",
         "Unity.Addressables",
         "Unity.Addressables.Editor",

@@ -72,6 +72,7 @@ namespace IWannabe.EditorTools
                 var kit = new StagePrefabKit
                 {
                     Shapes = ShapeSprites.Ensure(SetupPaths.Shapes),
+                    Otamaton = OtamatonSprites.Ensure($"{SetupPaths.Otamaton}/Default", "default"),
                     SpriteMaterial = AssetDatabase.LoadAssetAtPath<Material>(SetupPaths.SpriteMaterial),
                 };
                 LoadOrCreate<RhythmSettings>(SetupPaths.Settings);
