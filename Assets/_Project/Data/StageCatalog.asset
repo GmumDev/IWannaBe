@@ -13,9 +13,18 @@ MonoBehaviour:
   m_Name: StageCatalog
   m_EditorClassIdentifier: IWannabe.Rhythm::IWannabe.Rhythm.StageCatalog
   stages:
-  - displayName: "\uBC1B\uC544\uCE58\uAE30 (\uB370\uBAA8)"
+  - stageId: hitback
+    displayName: "\uBC1B\uC544\uCE58\uAE30"
     stage:
       m_AssetGUID: 1e977b9c562e5ff4dbbbad41b7b77cd1
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
+  - stageId: slice
+    displayName: "\uBCA0\uAE30"
+    stage:
+      m_AssetGUID: 4b1d0f0c39714cb4d839687698dd0e23
       m_SubObjectName: 
       m_SubObjectType: 
       m_SubObjectGUID: 

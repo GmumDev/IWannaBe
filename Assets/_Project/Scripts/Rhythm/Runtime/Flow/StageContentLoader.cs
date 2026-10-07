@@ -1,0 +1,133 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
+
+namespace IWannabe.Rhythm
+{
+    /// <summary>
+    /// 스테이지 콘텐츠(Addressables 그룹 하나)를 로드·언로드한다. 동시에 한 스테이지만 들고 있으며,
+    /// 다른 스테이지가 남아 있는 상태에서 로드를 요청하면 예외를 던진다.
+    /// 언로드는 번들이 비동기로 내려가므로 실제로 사라질 때까지 기다린 뒤 끝난다.
+    /// </summary>
+    public sealed class StageContentLoader
+    {
+        const float AudioLoadTimeoutSeconds = 10f;
+        const float BundleUnloadTimeoutSeconds = 10f;
+
+        AsyncOperationHandle<StageDefinition> handle;
+        readonly HashSet<string> stageBundles = new HashSet<string>();
+
+        public StageDefinition Current { get; private set; }
+        public StageReference CurrentReference { get; private set; }
+        public bool HasStage => handle.IsValid();
+
+        public IEnumerator Load(StageReference reference, Action<float> progress)
+        {
+            if (reference == null || !reference.RuntimeKeyIsValid())
+                throw new ArgumentException("불러올 스테이지 참조가 비어 있습니다.", nameof(reference));
+            if (HasStage)
+                throw new InvalidOperationException($"'{Current?.DisplayName}' 스테이지가 아직 로드되어 있습니다. 먼저 언로드해야 합니다.");
+
+            var bundlesBefore = LoadedBundleNames();
+            handle = Addressables.LoadAssetAsync<StageDefinition>(reference.RuntimeKey);
+            while (!handle.IsDone)
+            {
+                progress?.Invoke(handle.PercentComplete * 0.8f);
+                yield return null;
+            }
+            if (handle.Status != AsyncOperationStatus.Succeeded || handle.Result == null)
+            {
+                Debug.LogError($"[StageContentLoader] 스테이지 로드 실패: {handle.OperationException?.Message}");
+                Addressables.Release(handle);
+                handle = default;
+                yield break;
+            }
+
+            Current = handle.Result;
+            CurrentReference = reference;
+            stageBundles.Clear();
+            foreach (var name in LoadedBundleNames())
+                if (!bundlesBefore.Contains(name)) stageBundles.Add(name);
+
+            yield return LoadAudio(Current, progress);
+            progress?.Invoke(1f);
+            Debug.Log($"[StageContentLoader] 로드: '{Current.DisplayName}' (이 스테이지 번들 {stageBundles.Count}개)");
+        }
+
+        /// <summary>현재 스테이지를 해제하고, 그 번들과 에셋이 메모리에서 내려갈 때까지 기다린다.</summary>
+        public IEnumerator Unload()
+        {
+            if (!HasStage) yield break;
+
+            string name = Current != null ? Current.DisplayName : "?";
+            Current = null;
+            CurrentReference = null;
+            Addressables.Release(handle);
+            handle = default;
+
+            float deadline = Time.realtimeSinceStartup + BundleUnloadTimeoutSeconds;
+            while (AnyStageBundleLoaded() && Time.realtimeSinceStartup < deadline)
+                yield return null;
+            if (AnyStageBundleLoaded())
+                Debug.LogWarning("[StageContentLoader] 번들 언로드가 제한 시간 안에 끝나지 않았습니다.");
+            stageBundles.Clear();
+
+            // 에디터의 AssetDatabase 모드처럼 번들 없이 로드된 에셋도 여기서 내려간다.
+            yield return Resources.UnloadUnusedAssets();
+            Debug.Log($"[StageContentLoader] 언로드 완료: '{name}'");
+        }
+
+        /// <summary>앱 종료 등으로 기다릴 수 없을 때 즉시 해제한다.</summary>
+        public void ReleaseImmediate()
+        {
+            if (!HasStage) return;
+            Addressables.Release(handle);
+            handle = default;
+            Current = null;
+            CurrentReference = null;
+            stageBundles.Clear();
+        }
+
+        static IEnumerator LoadAudio(StageDefinition stage, Action<float> progress)
+        {
+            var clips = new List<AudioClip>();
+            if (stage.Song != null && stage.Song.Clip != null) clips.Add(stage.Song.Clip);
+            foreach (var cue in stage.CueSounds)
+                if (cue?.clip != null) clips.Add(cue.clip);
+            if (stage.PresenterPrefab != null)
+                foreach (var clip in stage.PresenterPrefab.AudioClips)
+                    if (clip != null) clips.Add(clip);
+
+            foreach (var clip in clips)
+                if (clip.loadState == AudioDataLoadState.Unloaded) clip.LoadAudioData();
+
+            float deadline = Time.realtimeSinceStartup + AudioLoadTimeoutSeconds;
+            while (Time.realtimeSinceStartup < deadline)
+            {
+                int loaded = clips.FindAll(c => c.loadState != AudioDataLoadState.Loading).Count;
+                progress?.Invoke(0.8f + 0.2f * loaded / Math.Max(1, clips.Count));
+                if (loaded == clips.Count) yield break;
+                yield return null;
+            }
+        }
+
+        bool AnyStageBundleLoaded()
+        {
+            if (stageBundles.Count == 0) return false;
+            foreach (var bundle in AssetBundle.GetAllLoadedAssetBundles())
+                if (bundle != null && stageBundles.Contains(bundle.name)) return true;
+            return false;
+        }
+
+        static HashSet<string> LoadedBundleNames()
+        {
+            var names = new HashSet<string>();
+            foreach (var bundle in AssetBundle.GetAllLoadedAssetBundles())
+                if (bundle != null) names.Add(bundle.name);
+            return names;
+        }
+    }
+}

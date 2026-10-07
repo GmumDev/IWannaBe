@@ -30,8 +30,10 @@ namespace IWannabe.Rhythm
 
         [SerializeField, Range(0f, 1f)] float musicVolume = 0.9f;
 
-        [Header("Camera")]
+        [Header("Camera / HUD")]
         [SerializeField] Color backgroundColor = new Color(0.99f, 0.94f, 0.84f);
+        [Tooltip("배경 위에 올라가는 HUD 글자색. 어두운 배경이면 밝게 둔다.")]
+        [SerializeField] Color hudInkColor = new Color(0.15f, 0.27f, 0.33f);
         [SerializeField, Min(1f)] float cameraSize = 5f;
         [Tooltip("세로 화면처럼 좁은 비율에서도 이 반폭(월드 단위)은 보이도록 카메라를 넓힌다.")]
         [SerializeField, Min(1f)] float minVisibleHalfWidth = 7.5f;
@@ -44,6 +46,7 @@ namespace IWannabe.Rhythm
         public IReadOnlyList<CueSound> CueSounds => cueSounds;
         public float MusicVolume => musicVolume;
         public Color BackgroundColor => backgroundColor;
+        public Color HudInkColor => hudInkColor;
         public float CameraSize => cameraSize;
         public float MinVisibleHalfWidth => minVisibleHalfWidth;
 
@@ -62,7 +65,7 @@ namespace IWannabe.Rhythm
         }
 
         public void Setup(string id, string title, SongData songData, ChartData chartData, StagePresenter presenter,
-            List<CueSound> sounds, Color background)
+            List<CueSound> sounds, Color background, Color hudInk)
         {
             stageId = id;
             displayName = title;
@@ -71,6 +74,7 @@ namespace IWannabe.Rhythm
             presenterPrefab = presenter;
             cueSounds = sounds ?? new List<CueSound>();
             backgroundColor = background;
+            hudInkColor = hudInk;
         }
     }
 }

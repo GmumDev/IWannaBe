@@ -1,17 +1,13 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.AddressableAssets;
 using UnityEngine.EventSystems;
-using UnityEngine.ResourceManagement.AsyncOperations;
-using UnityEngine.SceneManagement;
 
 namespace IWannabe.Rhythm
 {
     /// <summary>
-    /// 스테이지 플레이 씬의 진행자. Addressables로 스테이지를 불러와 연출 프리팹을 띄우고,
-    /// 곡 시간에 맞춰 큐 효과음 예약·연출 이벤트·판정을 돌린다.
+    /// 스테이지 플레이 씬의 진행자. <see cref="StageFlow"/>가 로드해 둔 스테이지로 연출 프리팹을 띄우고,
+    /// 곡 시간에 맞춰 큐 효과음 예약·연출 이벤트·판정을 돌린다. 콘텐츠 로드·언로드는 하지 않는다.
     /// </summary>
     public sealed class StageRunner : MonoBehaviour
     {
@@ -25,14 +21,11 @@ namespace IWannabe.Rhythm
         [SerializeField] Camera stageCamera;
         [SerializeField] Transform stageRoot;
 
-        [Tooltip("로비를 거치지 않고 이 씬을 바로 플레이할 때 불러올 스테이지.")]
+        [Tooltip("에디터에서 로비를 거치지 않고 이 씬을 바로 플레이할 때 불러올 스테이지.")]
         [SerializeField] StageReference fallbackStage;
 
-        [SerializeField] string lobbySceneName = "Lobby";
-
         State state = State.Loading;
-        StageReference activeReference;
-        AsyncOperationHandle<StageDefinition> handle;
+        StageFlow flow;
         StageDefinition definition;
         StagePresenter presenter;
         ChartTimeline timeline;
@@ -71,31 +64,35 @@ namespace IWannabe.Rhythm
         IEnumerator Start()
         {
             input.GameplayEnabled = false;
-            hud.ShowCenter("불러오는 중...");
+            hud.ShowCenter(null);
 
-            activeReference = StageSession.Requested ?? fallbackStage;
-            if (activeReference == null || !activeReference.RuntimeKeyIsValid())
+            flow = StageFlow.Instance;
+            if (flow == null)
             {
-                Fail("불러올 스테이지가 지정되지 않았습니다.");
+                Fail("StageFlow(AppRoot)가 씬에 없습니다.");
                 yield break;
             }
+            if (flow.CurrentStage == null)
+            {
+                if (fallbackStage == null || !fallbackStage.RuntimeKeyIsValid())
+                {
+                    Fail("불러올 스테이지가 지정되지 않았습니다.");
+                    yield break;
+                }
+                yield return flow.LoadStageInPlace(fallbackStage);
+            }
 
-            handle = Addressables.LoadAssetAsync<StageDefinition>(activeReference.RuntimeKey);
-            yield return handle;
-            if (handle.Status != AsyncOperationStatus.Succeeded || handle.Result == null)
+            definition = flow.CurrentStage;
+            if (definition == null)
             {
                 Fail("스테이지를 불러오지 못했습니다.");
                 yield break;
             }
-            definition = handle.Result;
-
             if (!Validate(definition, out string error))
             {
                 Fail(error);
                 yield break;
             }
-
-            yield return LoadAudio(definition);
 
             var tempoMap = definition.Song.CreateTempoMap();
             timeline = ChartTimeline.Build(definition.Chart.Patterns, tempoMap);
@@ -114,7 +111,13 @@ namespace IWannabe.Rhythm
             presenter.Bind(new StageContext(definition, timeline, tempoMap, conductor, sfx));
 
             hud.SetStageName(definition.DisplayName);
+            hud.ApplyTheme(definition.HudInkColor);
             hud.SetProgress(0);
+
+            // 연출 준비가 끝났음을 알리고, 로딩 화면이 완전히 걷힌 뒤에 카운트를 시작한다.
+            flow.ReportStagePrepared();
+            while (flow.IsTransitioning) yield return null;
+
             Debug.Log($"[StageRunner] '{definition.DisplayName}' 시작: 노트 {timeline.Notes.Count}개, " +
                       $"출력 지연 보정 {conductor.OutputLatency * 1000:0}ms, 입력 보정 {inputOffset * 1000:0}ms");
             StartPlayback(0, settings.StartLeadSeconds, "Ready?");
@@ -129,21 +132,6 @@ namespace IWannabe.Rhythm
             else if (stage.Chart.Patterns.Count == 0) error = "채보가 비어 있습니다. 채보 생성 프로필에서 생성을 실행하세요.";
             else if (stage.PresenterPrefab == null) error = "연출 프리팹이 없습니다.";
             return error == null;
-        }
-
-        IEnumerator LoadAudio(StageDefinition stage)
-        {
-            var clips = new List<AudioClip> { stage.Song.Clip };
-            foreach (var cue in stage.CueSounds)
-                if (cue?.clip != null) clips.Add(cue.clip);
-            clips.AddRange(stage.PresenterPrefab.AudioClips);
-
-            foreach (var clip in clips)
-                if (clip != null && clip.loadState == AudioDataLoadState.Unloaded) clip.LoadAudioData();
-
-            float deadline = Time.realtimeSinceStartup + 10f;
-            while (Time.realtimeSinceStartup < deadline && clips.Exists(c => c != null && c.loadState == AudioDataLoadState.Loading))
-                yield return null;
         }
 
         void StartPlayback(double fromTime, double lead, string readyText)
@@ -294,7 +282,10 @@ namespace IWannabe.Rhythm
             hud.SetPauseButtonVisible(false);
             hud.ShowCenter(null);
             presenter.OnStageFinished(score);
-            hud.ShowResult(score);
+
+            bool cleared = StageProgress.IsClearingRank(score.Rank);
+            if (cleared) StageProgress.MarkCleared(definition.StageId);
+            hud.ShowResult(score, cleared);
         }
 
         void Fail(string message)
@@ -303,18 +294,26 @@ namespace IWannabe.Rhythm
             input.GameplayEnabled = false;
             Debug.LogError($"[StageRunner] {message}");
             hud.ShowError(message);
+            // 로딩 화면이 오류 메시지를 가리지 않도록 걷는다.
+            if (flow != null) flow.ReportStagePrepared();
         }
 
         void Retry()
         {
-            if (activeReference != null) StageSession.Request(activeReference);
-            SceneManager.LoadScene(gameObject.scene.name);
+            if (state == State.Loading || flow == null || flow.IsTransitioning) return;
+            conductor.Stop();
+            sfx.StopAll();
+            input.GameplayEnabled = false;
+            flow.RetryStage();
         }
 
         void ExitToLobby()
         {
-            StageSession.Clear();
-            SceneManager.LoadScene(lobbySceneName);
+            if (flow == null || flow.IsTransitioning) return;
+            conductor.Stop();
+            sfx.StopAll();
+            input.GameplayEnabled = false;
+            flow.ExitToLobby();
         }
 
         void UpdateCameraSize()
@@ -323,11 +322,6 @@ namespace IWannabe.Rhythm
             float size = definition.CameraSize;
             if (stageCamera.aspect > 0) size = Mathf.Max(size, definition.MinVisibleHalfWidth / stageCamera.aspect);
             stageCamera.orthographicSize = size;
-        }
-
-        void OnDestroy()
-        {
-            if (handle.IsValid()) Addressables.Release(handle);
         }
     }
 }

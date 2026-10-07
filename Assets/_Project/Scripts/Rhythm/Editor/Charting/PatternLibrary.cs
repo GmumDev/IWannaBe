@@ -13,12 +13,5 @@ namespace IWannabe.Rhythm.EditorTools
         public IReadOnlyList<PatternDefinition> Patterns => patterns;
 
         public void SetPatterns(List<PatternDefinition> value) => patterns = value ?? new List<PatternDefinition>();
-
-        [ContextMenu("기본 패턴 세트로 채우기")]
-        void FillWithStarterSet()
-        {
-            patterns = PatternPresets.CreateStarterSet();
-            UnityEditor.EditorUtility.SetDirty(this);
-        }
     }
 }

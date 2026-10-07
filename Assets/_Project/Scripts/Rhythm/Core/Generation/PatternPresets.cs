@@ -3,60 +3,12 @@ using System.Collections.Generic;
 namespace IWannabe.Rhythm.Charting
 {
     /// <summary>
-    /// 원버튼 스테이지용 기본 패턴 세트. 새 스테이지의 패턴 라이브러리를 시작할 때 쓴다.
-    /// 큐 규칙: throw → 1박 뒤, lob → 2박 뒤, charge → 1박 뒤 누르고 tick 1박 뒤에 뗌, bell → 4박 뒤 따라 치기.
+    /// 패턴 정의를 짧게 조립하는 도우미. 스테이지별 패턴 구성(어떤 큐를 몇 박 뒤에 칠지)은
+    /// 각 스테이지 설정 쪽에서 이 함수들로 만든다.
     /// </summary>
     public static class PatternPresets
     {
-        public const string CueThrow = "throw";
-        public const string CueLob = "lob";
-        public const string CueCharge = "charge";
-        public const string CueTick = "tick";
-        public const string CueBell = "bell";
-
-        public static List<PatternDefinition> CreateStarterSet()
-        {
-            return new List<PatternDefinition>
-            {
-                Fixed("throw", 1, 1.0f, 0, 2, OnsetBand.Full, 0.5,
-                    Cues((-1, CueThrow, 0)),
-                    Taps(0)),
-
-                Fixed("lob", 1, 0.85f, 0, 2, OnsetBand.Full, 1,
-                    Cues((-2, CueLob, 0)),
-                    Taps(0)),
-
-                Fixed("double", 2, 0.95f, 1, 2, OnsetBand.Full, 1,
-                    Cues((-1, CueThrow, 0), (-0.5, CueThrow, 1)),
-                    Taps(0, 0.5)),
-
-                Cooldown(3, Hold("charge", 2, 0.6f, 0, 2, OnsetBand.Low, 2,
-                    Cues((-1, CueCharge, 0), (1, CueTick, -1)))),
-
-                Cooldown(2, Fixed("triplet", 3, 0.7f, 2, 2, OnsetBand.Full, 1,
-                    Cues((-1, CueThrow, 0), (-2.0 / 3, CueThrow, 1), (-1.0 / 3, CueThrow, 2)),
-                    Taps(0, 1.0 / 3, 2.0 / 3))),
-
-                new PatternDefinition
-                {
-                    id = "echo",
-                    kind = PatternKind.CallAndResponse,
-                    difficulty = 3,
-                    weight = 0.85f,
-                    cooldown = 4,
-                    minLevel = 1,
-                    maxLevel = 2,
-                    band = OnsetBand.Full,
-                    callCueId = CueBell,
-                    callBeats = 4,
-                    responseGrid = 2,
-                    minResponseNotes = 2,
-                    maxResponseNotes = 4,
-                },
-            };
-        }
-
-        static PatternDefinition Fixed(string id, int difficulty, float weight, int minLevel, int maxLevel, OnsetBand band,
+        public static PatternDefinition Fixed(string id, int difficulty, float weight, int minLevel, int maxLevel, OnsetBand band,
             double anchorStep, List<PatternCueDef> cues, List<PatternNoteDef> notes)
         {
             return new PatternDefinition
@@ -74,20 +26,43 @@ namespace IWannabe.Rhythm.Charting
             };
         }
 
-        static PatternDefinition Hold(string id, int difficulty, float weight, int minLevel, int maxLevel, OnsetBand band,
+        /// <summary>오프셋 0에서 누르고 <paramref name="holdBeats"/>박 뒤에 떼는 홀드 패턴.</summary>
+        public static PatternDefinition Hold(string id, int difficulty, float weight, int minLevel, int maxLevel, OnsetBand band,
             double holdBeats, List<PatternCueDef> cues)
         {
             var notes = new List<PatternNoteDef> { new PatternNoteDef { offset = 0, type = NoteType.Hold, holdBeats = holdBeats } };
             return Fixed(id, difficulty, weight, minLevel, maxLevel, band, 1, cues, notes);
         }
 
-        static PatternDefinition Cooldown(int patterns, PatternDefinition definition)
+        /// <summary>콜 앤 리스폰스. 큐가 들려준 리듬을 <paramref name="callBeats"/>박 뒤에 따라 친다.</summary>
+        public static PatternDefinition Echo(string id, string callCueId, int difficulty, float weight, int minLevel, int maxLevel,
+            int callBeats = 4, int minNotes = 2, int maxNotes = 4)
+        {
+            return new PatternDefinition
+            {
+                id = id,
+                kind = PatternKind.CallAndResponse,
+                difficulty = difficulty,
+                weight = weight,
+                minLevel = minLevel,
+                maxLevel = maxLevel,
+                band = OnsetBand.Full,
+                callCueId = callCueId,
+                callBeats = callBeats,
+                responseGrid = 2,
+                minResponseNotes = minNotes,
+                maxResponseNotes = maxNotes,
+            };
+        }
+
+        public static PatternDefinition WithCooldown(int patterns, PatternDefinition definition)
         {
             definition.cooldown = patterns;
             return definition;
         }
 
-        static List<PatternCueDef> Cues(params (double offset, string cueId, int target)[] items)
+        /// <summary>(앵커 기준 박, 큐 ID, 예고 대상 노트 인덱스 또는 -1) 목록으로 큐를 만든다.</summary>
+        public static List<PatternCueDef> Cues(params (double offset, string cueId, int target)[] items)
         {
             var list = new List<PatternCueDef>();
             foreach (var item in items)
@@ -95,7 +70,7 @@ namespace IWannabe.Rhythm.Charting
             return list;
         }
 
-        static List<PatternNoteDef> Taps(params double[] offsets)
+        public static List<PatternNoteDef> Taps(params double[] offsets)
         {
             var list = new List<PatternNoteDef>();
             foreach (var offset in offsets)

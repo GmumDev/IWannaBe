@@ -1,0 +1,202 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d332bae9f5477d444ae5c8d4933d307b, type: 3}
+  m_Name: Slice_PatternLibrary
+  m_EditorClassIdentifier: IWannabe.Rhythm.Editor::IWannabe.Rhythm.EditorTools.PatternLibrary
+  patterns:
+  - id: toss
+    kind: 0
+    difficulty: 1
+    weight: 1
+    cooldown: 0
+    minLevel: 0
+    maxLevel: 2
+    band: 0
+    anchorStep: 0.5
+    cues:
+    - offset: -1
+      cueId: toss
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+    callCueId: bell
+    callBeats: 4
+    responseGrid: 2
+    minResponseNotes: 2
+    maxResponseNotes: 4
+  - id: high
+    kind: 0
+    difficulty: 1
+    weight: 0.85
+    cooldown: 0
+    minLevel: 0
+    maxLevel: 2
+    band: 0
+    anchorStep: 1
+    cues:
+    - offset: -2
+      cueId: high
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+    callCueId: bell
+    callBeats: 4
+    responseGrid: 2
+    minResponseNotes: 2
+    maxResponseNotes: 4
+  - id: pair
+    kind: 0
+    difficulty: 2
+    weight: 1
+    cooldown: 0
+    minLevel: 1
+    maxLevel: 2
+    band: 0
+    anchorStep: 1
+    cues:
+    - offset: -1
+      cueId: toss
+      targetNote: 0
+    - offset: -0.5
+      cueId: toss
+      targetNote: 1
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+    - offset: 0.5
+      type: 0
+      holdBeats: 0
+    callCueId: bell
+    callBeats: 4
+    responseGrid: 2
+    minResponseNotes: 2
+    maxResponseNotes: 4
+  - id: draw
+    kind: 0
+    difficulty: 2
+    weight: 0.6
+    cooldown: 3
+    minLevel: 0
+    maxLevel: 2
+    band: 1
+    anchorStep: 1
+    cues:
+    - offset: -1
+      cueId: draw
+      targetNote: 0
+    - offset: 1
+      cueId: tick
+      targetNote: -1
+    notes:
+    - offset: 0
+      type: 1
+      holdBeats: 2
+    callCueId: bell
+    callBeats: 4
+    responseGrid: 2
+    minResponseNotes: 2
+    maxResponseNotes: 4
+  - id: triple
+    kind: 0
+    difficulty: 3
+    weight: 0.75
+    cooldown: 2
+    minLevel: 2
+    maxLevel: 2
+    band: 0
+    anchorStep: 1
+    cues:
+    - offset: -1
+      cueId: toss
+      targetNote: 0
+    - offset: -0.6666666666666666
+      cueId: toss
+      targetNote: 1
+    - offset: -0.3333333333333333
+      cueId: toss
+      targetNote: 2
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+    - offset: 0.3333333333333333
+      type: 0
+      holdBeats: 0
+    - offset: 0.6666666666666666
+      type: 0
+      holdBeats: 0
+    callCueId: bell
+    callBeats: 4
+    responseGrid: 2
+    minResponseNotes: 2
+    maxResponseNotes: 4
+  - id: volley
+    kind: 0
+    difficulty: 4
+    weight: 0.8
+    cooldown: 3
+    minLevel: 2
+    maxLevel: 2
+    band: 0
+    anchorStep: 1
+    cues:
+    - offset: -1
+      cueId: toss
+      targetNote: 0
+    - offset: -0.5
+      cueId: toss
+      targetNote: 1
+    - offset: 0
+      cueId: toss
+      targetNote: 2
+    - offset: 0.5
+      cueId: toss
+      targetNote: 3
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+    - offset: 0.5
+      type: 0
+      holdBeats: 0
+    - offset: 1
+      type: 0
+      holdBeats: 0
+    - offset: 1.5
+      type: 0
+      holdBeats: 0
+    callCueId: bell
+    callBeats: 4
+    responseGrid: 2
+    minResponseNotes: 2
+    maxResponseNotes: 4
+  - id: echo
+    kind: 1
+    difficulty: 3
+    weight: 0.85
+    cooldown: 4
+    minLevel: 1
+    maxLevel: 2
+    band: 0
+    anchorStep: 1
+    cues: []
+    notes: []
+    callCueId: gong
+    callBeats: 4
+    responseGrid: 2
+    minResponseNotes: 2
+    maxResponseNotes: 4

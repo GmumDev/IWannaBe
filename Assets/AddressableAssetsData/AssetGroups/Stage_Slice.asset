@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Stage_Slice
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: Stage_Slice
+  m_GUID: 4e0a24975c1670f4ea332be2f273f8f1
+  m_SerializeEntries:
+  - m_GUID: 4b1d0f0c39714cb4d839687698dd0e23
+    m_Address: Stages/Slice
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - stage
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: b8f1030ef37ed934ca03cc2cc9de9461, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: c2e091295838cbc43bdb5f3ad956745d, type: 2}
+    - {fileID: 11400000, guid: 9937118799060cb4089bbf26429fca7f, type: 2}

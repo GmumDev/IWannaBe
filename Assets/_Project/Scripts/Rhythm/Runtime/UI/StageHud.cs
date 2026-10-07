@@ -11,6 +11,7 @@ namespace IWannabe.Rhythm
         [SerializeField] Text stageNameText;
         [SerializeField] Text centerText;
         [SerializeField] Text judgementText;
+        [SerializeField] Text hintText;
         [Tooltip("가로로 늘어나는 진행 바. 앵커 오른쪽 끝을 진행도에 맞춘다.")]
         [SerializeField] RectTransform progressFill;
         [SerializeField] Button pauseButton;
@@ -70,6 +71,14 @@ namespace IWannabe.Rhythm
 
         public void SetStageName(string value) => stageNameText.text = value;
 
+        /// <summary>스테이지 배경에 맞춰 배경 위에 직접 올라가는 글자색을 바꾼다.</summary>
+        public void ApplyTheme(Color ink)
+        {
+            stageNameText.color = ink;
+            centerText.color = ink;
+            if (hintText != null) hintText.color = new Color(ink.r, ink.g, ink.b, 0.6f);
+        }
+
         public void ShowCenter(string value)
         {
             centerText.text = value ?? string.Empty;
@@ -122,7 +131,7 @@ namespace IWannabe.Rhythm
             Select(pauseExitButton);
         }
 
-        public void ShowResult(ScoreTracker score)
+        public void ShowResult(ScoreTracker score, bool cleared)
         {
             pausePanel.SetActive(false);
             resultPanel.SetActive(true);
@@ -132,8 +141,11 @@ namespace IWannabe.Rhythm
                 case StageRank.Ok: resultRankText.text = "괜찮아요"; break;
                 default: resultRankText.text = "다시 도전!"; break;
             }
+            string clearLine = cleared
+                ? "클리어!"
+                : $"정확도 {ScoreTracker.OkThreshold * 100:0}% 이상이면 클리어";
             resultDetailText.text =
-                $"정확도 {score.Accuracy * 100:0}%\nPerfect {score.Perfect}   아슬아슬 {score.Barely}   Miss {score.Miss}";
+                $"정확도 {score.Accuracy * 100:0}%\nPerfect {score.Perfect}   아슬아슬 {score.Barely}   Miss {score.Miss}\n{clearLine}";
             Select(resultRetryButton);
         }
 
