@@ -1,4 +1,5 @@
 using System;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -42,8 +43,7 @@ namespace IWannabe.Rhythm
         public event Action RetryClicked;
         public event Action ExitClicked;
 
-        float judgementTimer;
-        Color judgementColor;
+        Tween judgementFade;
 
         void Awake()
         {
@@ -58,15 +58,6 @@ namespace IWannabe.Rhythm
             resultPanel.SetActive(false);
             judgementText.text = string.Empty;
             SetPauseButtonVisible(false);
-        }
-
-        void Update()
-        {
-            if (judgementTimer <= 0) return;
-            judgementTimer -= Time.unscaledDeltaTime;
-            var c = judgementColor;
-            c.a = Mathf.Clamp01(judgementTimer / judgementFadeSeconds);
-            judgementText.color = c;
         }
 
         public void SetStageName(string value) => stageNameText.text = value;
@@ -93,26 +84,29 @@ namespace IWannabe.Rhythm
         {
             if (!showJudgementText) return;
             string label;
+            Color color;
             switch (judgement.Grade)
             {
                 case JudgeGrade.Perfect:
                     label = "Perfect";
-                    judgementColor = perfectColor;
+                    color = perfectColor;
                     break;
                 case JudgeGrade.Barely:
                     label = "아슬아슬";
-                    judgementColor = barelyColor;
+                    color = barelyColor;
                     break;
                 default:
                     label = "Miss";
-                    judgementColor = missColor;
+                    color = missColor;
                     break;
             }
             if (judgement.Phase == NotePhase.Release) label += " (뗌)";
             if (judgement.HasInput) label += $"  {judgement.Delta * 1000:+0;-0;0}ms";
             judgementText.text = label;
-            judgementText.color = judgementColor;
-            judgementTimer = judgementFadeSeconds;
+            judgementText.color = color;
+            // 판정마다 진하게 띄웠다가 서서히 사라진다. 일시정지 중에도 흐려지도록 실제 시간으로 돈다.
+            judgementFade?.Kill();
+            judgementFade = judgementText.DOFade(0f, judgementFadeSeconds).SetEase(Ease.Linear).SetUpdate(true).SetLink(gameObject);
         }
 
         public void ShowPause(bool visible)

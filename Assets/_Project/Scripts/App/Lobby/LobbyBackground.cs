@@ -1,3 +1,5 @@
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -15,7 +17,7 @@ namespace IWannabe.App
         [SerializeField] AspectRatioFitter fitter;
 
         AsyncOperationHandle<Sprite> spriteHandle;
-        int request;
+        CancellationTokenSource loading;
 
         void Start()
         {
@@ -27,8 +29,8 @@ namespace IWannabe.App
 
         void OnDestroy()
         {
-            request++;
             if (Wardrobe.Instance != null) Wardrobe.Instance.Changed -= OnChanged;
+            CancelLoading();
             ReleaseSprite();
         }
 
@@ -39,7 +41,7 @@ namespace IWannabe.App
 
         void Apply(BackgroundItem item)
         {
-            int current = ++request;
+            CancelLoading();
             image.color = item != null ? item.color : Color.white;
             if (item == null || item.image == null || !item.image.RuntimeKeyIsValid())
             {
@@ -47,22 +49,33 @@ namespace IWannabe.App
                 ReleaseSprite();
                 return;
             }
+            loading = CancellationTokenSource.CreateLinkedTokenSource(destroyCancellationToken);
+            LoadAsync(item, loading.Token).Forget();
+        }
 
-            // 새 이미지가 올 때까지 이전 이미지를 보여 주다가 바꾼다.
-            var load = Addressables.LoadAssetAsync<Sprite>(item.image.RuntimeKey);
-            load.Completed += done =>
+        /// <summary>새 이미지가 올 때까지 이전 이미지를 보여 주다가 바꾼다.</summary>
+        async UniTaskVoid LoadAsync(BackgroundItem item, CancellationToken cancellationToken)
+        {
+            var handle = Addressables.LoadAssetAsync<Sprite>(item.image.RuntimeKey);
+            // 다른 배경으로 바꾸거나 로비가 내려가 취소되는 건 평범한 흐름이라 예외 없이 값으로 받고,
+            // 실패도 핸들 상태로 확인한다.
+            bool canceled = await UniTask.WaitUntil(() => handle.IsDone, cancellationToken: cancellationToken)
+                .SuppressCancellationThrow();
+            if (canceled)
             {
-                if (current != request || done.Status != AsyncOperationStatus.Succeeded)
-                {
-                    if (done.Status != AsyncOperationStatus.Succeeded)
-                        Debug.LogError($"[LobbyBackground] '{item.displayName}' 배경을 불러오지 못했습니다.");
-                    Addressables.Release(done);
-                    return;
-                }
-                ReleaseSprite();
-                spriteHandle = done;
-                SetSprite(done.Result);
-            };
+                Addressables.Release(handle);
+                return;
+            }
+            if (handle.Status != AsyncOperationStatus.Succeeded)
+            {
+                Debug.LogError($"[LobbyBackground] '{item.displayName}' 배경을 불러오지 못했습니다: {handle.OperationException?.Message}");
+                Addressables.Release(handle);
+                return;
+            }
+
+            ReleaseSprite();
+            spriteHandle = handle;
+            SetSprite(handle.Result);
         }
 
         void SetSprite(Sprite sprite)
@@ -70,6 +83,14 @@ namespace IWannabe.App
             image.sprite = sprite;
             // 단색이면 비율은 상관없다. 이미지면 원본 비율로 화면을 덮는다.
             fitter.aspectRatio = sprite != null ? sprite.rect.width / sprite.rect.height : 1f;
+        }
+
+        void CancelLoading()
+        {
+            if (loading == null) return;
+            loading.Cancel();
+            loading.Dispose();
+            loading = null;
         }
 
         void ReleaseSprite()

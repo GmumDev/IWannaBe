@@ -1,5 +1,6 @@
 using System;
-using System.Collections;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -61,7 +62,9 @@ namespace IWannabe.Rhythm
             input.Released -= OnReleased;
         }
 
-        IEnumerator Start()
+        void Start() => StartAsync(destroyCancellationToken).Forget();
+
+        async UniTaskVoid StartAsync(CancellationToken cancellationToken)
         {
             input.GameplayEnabled = false;
             hud.ShowCenter(null);
@@ -70,28 +73,28 @@ namespace IWannabe.Rhythm
             if (flow == null)
             {
                 Fail("StageFlow(AppRoot)가 씬에 없습니다.");
-                yield break;
+                return;
             }
             if (flow.CurrentStage == null)
             {
                 if (fallbackStage == null || !fallbackStage.RuntimeKeyIsValid())
                 {
                     Fail("불러올 스테이지가 지정되지 않았습니다.");
-                    yield break;
+                    return;
                 }
-                yield return flow.LoadStageInPlace(fallbackStage);
+                await flow.LoadStageInPlaceAsync(fallbackStage, cancellationToken);
             }
 
             definition = flow.CurrentStage;
             if (definition == null)
             {
                 Fail("스테이지를 불러오지 못했습니다.");
-                yield break;
+                return;
             }
             if (!Validate(definition, out string error))
             {
                 Fail(error);
-                yield break;
+                return;
             }
 
             var tempoMap = definition.Song.CreateTempoMap();
@@ -116,7 +119,7 @@ namespace IWannabe.Rhythm
 
             // 연출 준비가 끝났음을 알리고, 로딩 화면이 완전히 걷힌 뒤에 카운트를 시작한다.
             flow.ReportStagePrepared();
-            while (flow.IsTransitioning) yield return null;
+            await UniTask.WaitWhile(() => flow.IsTransitioning, cancellationToken: cancellationToken);
 
             Debug.Log($"[StageRunner] '{definition.DisplayName}' 시작: 노트 {timeline.Notes.Count}개, " +
                       $"출력 지연 보정 {conductor.OutputLatency * 1000:0}ms, 입력 보정 {inputOffset * 1000:0}ms");

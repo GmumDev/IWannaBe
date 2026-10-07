@@ -1,4 +1,6 @@
-using System.Collections;
+using System;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -50,20 +52,20 @@ namespace IWannabe.Rhythm
         public void EnterStage(StageReference stage)
         {
             if (IsTransitioning) return;
-            StartCoroutine(EnterRoutine(stage));
+            RunTransition(token => EnterAsync(stage, token));
         }
 
         /// <summary>같은 스테이지를 처음부터. 콘텐츠는 그대로 두고 플레이 씬만 다시 연다.</summary>
         public void RetryStage()
         {
             if (IsTransitioning || !content.HasStage) return;
-            StartCoroutine(RetryRoutine());
+            RunTransition(RetryAsync);
         }
 
         public void ExitToLobby()
         {
             if (IsTransitioning) return;
-            StartCoroutine(ExitRoutine());
+            RunTransition(ExitAsync);
         }
 
         /// <summary>플레이 씬이 연출 준비를 마쳤음을 알린다. 이때 로딩 화면을 걷는다.</summary>
@@ -71,88 +73,113 @@ namespace IWannabe.Rhythm
 
         /// <summary>
         /// 에디터에서 플레이 씬을 바로 실행해 로드된 스테이지가 없을 때, 현재 씬을 유지한 채 스테이지를 불러온다.
+        /// 로드가 끝나면 돌아오고, 로딩 화면은 <see cref="ReportStagePrepared"/> 뒤에 걷힌다.
         /// </summary>
-        public IEnumerator LoadStageInPlace(StageReference stage)
+        public async UniTask LoadStageInPlaceAsync(StageReference stage, CancellationToken cancellationToken)
         {
-            if (IsTransitioning || content.HasStage) yield break;
+            if (IsTransitioning || content.HasStage) return;
             IsTransitioning = true;
             stagePrepared = false;
             loadingScreen.ShowImmediate("스테이지를 불러오는 중");
-            yield return content.Load(stage, loadingScreen.SetProgress);
-            StartCoroutine(RevealWhenPrepared(Time.realtimeSinceStartup));
+            try
+            {
+                await content.LoadAsync(stage, loadingScreen, cancellationToken);
+            }
+            catch
+            {
+                IsTransitioning = false;
+                throw;
+            }
+            RunTransition(token => RevealWhenPreparedAsync(Time.realtimeSinceStartup, token));
         }
 
-        IEnumerator EnterRoutine(StageReference stage)
+        /// <summary>전환 하나를 돌린다. 도중에 예외가 나도 전환 상태가 풀리도록 마지막에 정리한다.</summary>
+        void RunTransition(Func<CancellationToken, UniTask> transition) => RunTransitionAsync(transition, destroyCancellationToken).Forget();
+
+        async UniTaskVoid RunTransitionAsync(Func<CancellationToken, UniTask> transition, CancellationToken cancellationToken)
         {
             IsTransitioning = true;
+            try
+            {
+                await transition(cancellationToken);
+            }
+            finally
+            {
+                IsTransitioning = false;
+            }
+        }
+
+        async UniTask EnterAsync(StageReference stage, CancellationToken cancellationToken)
+        {
             float started = Time.realtimeSinceStartup;
-            yield return loadingScreen.Show("스테이지를 불러오는 중");
+            await loadingScreen.ShowAsync("스테이지를 불러오는 중", cancellationToken);
 
             if (content.HasStage)
             {
                 // 다른 스테이지가 남아 있으면 그 씬을 먼저 내리고 콘텐츠를 언로드한 다음에 로드한다.
                 loadingScreen.SetMessage("이전 스테이지 정리 중");
-                yield return SceneManager.LoadSceneAsync(lobbySceneName);
-                yield return content.Unload();
+                await LoadSceneAsync(lobbySceneName, cancellationToken);
+                await content.UnloadAsync(cancellationToken);
                 loadingScreen.SetMessage("스테이지를 불러오는 중");
             }
 
-            yield return content.Load(stage, loadingScreen.SetProgress);
+            await content.LoadAsync(stage, loadingScreen, cancellationToken);
             if (!content.HasStage)
             {
                 loadingScreen.SetMessage("스테이지를 불러오지 못했습니다");
-                yield return new WaitForSecondsRealtime(1.5f);
-                yield return ReturnToLobby();
-                yield break;
+                await UniTask.Delay(TimeSpan.FromSeconds(1.5), DelayType.Realtime, cancellationToken: cancellationToken);
+                await ReturnToLobbyAsync(cancellationToken);
+                return;
             }
 
             stagePrepared = false;
-            yield return SceneManager.LoadSceneAsync(stageSceneName);
-            yield return RevealWhenPrepared(started);
+            await LoadSceneAsync(stageSceneName, cancellationToken);
+            await RevealWhenPreparedAsync(started, cancellationToken);
         }
 
-        IEnumerator RetryRoutine()
+        async UniTask RetryAsync(CancellationToken cancellationToken)
         {
-            IsTransitioning = true;
             float started = Time.realtimeSinceStartup;
-            yield return loadingScreen.Show("다시 시작");
+            await loadingScreen.ShowAsync("다시 시작", cancellationToken);
             loadingScreen.SetProgress(1f);
             stagePrepared = false;
-            yield return SceneManager.LoadSceneAsync(stageSceneName);
-            yield return RevealWhenPrepared(started);
+            await LoadSceneAsync(stageSceneName, cancellationToken);
+            await RevealWhenPreparedAsync(started, cancellationToken);
         }
 
-        IEnumerator ExitRoutine()
+        async UniTask ExitAsync(CancellationToken cancellationToken)
         {
-            IsTransitioning = true;
-            yield return loadingScreen.Show("로비로 돌아가는 중");
-            yield return ReturnToLobby();
+            await loadingScreen.ShowAsync("로비로 돌아가는 중", cancellationToken);
+            await ReturnToLobbyAsync(cancellationToken);
         }
 
         /// <summary>스테이지 씬을 내린 뒤 콘텐츠를 언로드한다. 연출 인스턴스가 사라진 다음에 해제해야 안전하다.</summary>
-        IEnumerator ReturnToLobby()
+        async UniTask ReturnToLobbyAsync(CancellationToken cancellationToken)
         {
             float started = Time.realtimeSinceStartup;
-            yield return SceneManager.LoadSceneAsync(lobbySceneName);
-            yield return content.Unload();
+            await LoadSceneAsync(lobbySceneName, cancellationToken);
+            await content.UnloadAsync(cancellationToken);
             loadingScreen.SetProgress(1f);
-            yield return WaitMinimum(started);
-            yield return loadingScreen.Hide();
-            IsTransitioning = false;
+            await WaitMinimumAsync(started, cancellationToken);
+            await loadingScreen.HideAsync(cancellationToken);
         }
 
-        IEnumerator RevealWhenPrepared(float started)
+        async UniTask RevealWhenPreparedAsync(float started, CancellationToken cancellationToken)
         {
-            while (!stagePrepared) yield return null;
-            yield return WaitMinimum(started);
-            yield return loadingScreen.Hide();
-            IsTransitioning = false;
+            await UniTask.WaitUntil(() => stagePrepared, cancellationToken: cancellationToken);
+            await WaitMinimumAsync(started, cancellationToken);
+            await loadingScreen.HideAsync(cancellationToken);
         }
 
-        IEnumerator WaitMinimum(float started)
+        UniTask WaitMinimumAsync(float started, CancellationToken cancellationToken)
         {
             float remaining = minimumLoadingSeconds - (Time.realtimeSinceStartup - started);
-            if (remaining > 0f) yield return new WaitForSecondsRealtime(remaining);
+            return remaining > 0f
+                ? UniTask.Delay(TimeSpan.FromSeconds(remaining), DelayType.Realtime, cancellationToken: cancellationToken)
+                : UniTask.CompletedTask;
         }
+
+        static UniTask LoadSceneAsync(string sceneName, CancellationToken cancellationToken) =>
+            SceneManager.LoadSceneAsync(sceneName).ToUniTask(cancellationToken: cancellationToken);
     }
 }

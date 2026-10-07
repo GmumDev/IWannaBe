@@ -1,6 +1,7 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -16,6 +17,8 @@ namespace IWannabe.Rhythm
     {
         const float AudioLoadTimeoutSeconds = 10f;
         const float BundleUnloadTimeoutSeconds = 10f;
+        /// <summary>진행도 중 에셋 로드가 차지하는 몫. 나머지는 오디오 데이터 준비.</summary>
+        const float AssetProgressShare = 0.8f;
 
         AsyncOperationHandle<StageDefinition> handle;
         readonly HashSet<string> stageBundles = new HashSet<string>();
@@ -24,7 +27,8 @@ namespace IWannabe.Rhythm
         public StageReference CurrentReference { get; private set; }
         public bool HasStage => handle.IsValid();
 
-        public IEnumerator Load(StageReference reference, Action<float> progress)
+        /// <summary>스테이지를 로드한다. 실패하면 오류를 남기고 <see cref="HasStage"/>가 false인 채로 끝난다.</summary>
+        public async UniTask LoadAsync(StageReference reference, IProgress<float> progress, CancellationToken cancellationToken)
         {
             if (reference == null || !reference.RuntimeKeyIsValid())
                 throw new ArgumentException("불러올 스테이지 참조가 비어 있습니다.", nameof(reference));
@@ -33,17 +37,21 @@ namespace IWannabe.Rhythm
 
             var bundlesBefore = LoadedBundleNames();
             handle = Addressables.LoadAssetAsync<StageDefinition>(reference.RuntimeKey);
-            while (!handle.IsDone)
+            try
             {
-                progress?.Invoke(handle.PercentComplete * 0.8f);
-                yield return null;
+                var assetProgress = Progress.Create<float>(p => progress?.Report(p * AssetProgressShare));
+                await handle.ToUniTask(assetProgress, cancellationToken: cancellationToken);
             }
-            if (handle.Status != AsyncOperationStatus.Succeeded || handle.Result == null)
+            catch (OperationCanceledException)
             {
-                Debug.LogError($"[StageContentLoader] 스테이지 로드 실패: {handle.OperationException?.Message}");
-                Addressables.Release(handle);
-                handle = default;
-                yield break;
+                ReleaseFailedLoad();
+                throw;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[StageContentLoader] 스테이지 로드 실패: {e.Message}");
+                ReleaseFailedLoad();
+                return;
             }
 
             Current = handle.Result;
@@ -52,15 +60,15 @@ namespace IWannabe.Rhythm
             foreach (var name in LoadedBundleNames())
                 if (!bundlesBefore.Contains(name)) stageBundles.Add(name);
 
-            yield return LoadAudio(Current, progress);
-            progress?.Invoke(1f);
+            await LoadAudioAsync(Current, progress, cancellationToken);
+            progress?.Report(1f);
             Debug.Log($"[StageContentLoader] 로드: '{Current.DisplayName}' (이 스테이지 번들 {stageBundles.Count}개)");
         }
 
         /// <summary>현재 스테이지를 해제하고, 그 번들과 에셋이 메모리에서 내려갈 때까지 기다린다.</summary>
-        public IEnumerator Unload()
+        public async UniTask UnloadAsync(CancellationToken cancellationToken)
         {
-            if (!HasStage) yield break;
+            if (!HasStage) return;
 
             string name = Current != null ? Current.DisplayName : "?";
             Current = null;
@@ -70,13 +78,13 @@ namespace IWannabe.Rhythm
 
             float deadline = Time.realtimeSinceStartup + BundleUnloadTimeoutSeconds;
             while (AnyStageBundleLoaded() && Time.realtimeSinceStartup < deadline)
-                yield return null;
+                await UniTask.Yield(cancellationToken);
             if (AnyStageBundleLoaded())
                 Debug.LogWarning("[StageContentLoader] 번들 언로드가 제한 시간 안에 끝나지 않았습니다.");
             stageBundles.Clear();
 
             // 에디터의 AssetDatabase 모드처럼 번들 없이 로드된 에셋도 여기서 내려간다.
-            yield return Resources.UnloadUnusedAssets();
+            await Resources.UnloadUnusedAssets().ToUniTask(cancellationToken: cancellationToken);
             Debug.Log($"[StageContentLoader] 언로드 완료: '{name}'");
         }
 
@@ -91,7 +99,13 @@ namespace IWannabe.Rhythm
             stageBundles.Clear();
         }
 
-        static IEnumerator LoadAudio(StageDefinition stage, Action<float> progress)
+        void ReleaseFailedLoad()
+        {
+            Addressables.Release(handle);
+            handle = default;
+        }
+
+        static async UniTask LoadAudioAsync(StageDefinition stage, IProgress<float> progress, CancellationToken cancellationToken)
         {
             var clips = new List<AudioClip>();
             if (stage.Song != null && stage.Song.Clip != null) clips.Add(stage.Song.Clip);
@@ -108,9 +122,9 @@ namespace IWannabe.Rhythm
             while (Time.realtimeSinceStartup < deadline)
             {
                 int loaded = clips.FindAll(c => c.loadState != AudioDataLoadState.Loading).Count;
-                progress?.Invoke(0.8f + 0.2f * loaded / Math.Max(1, clips.Count));
-                if (loaded == clips.Count) yield break;
-                yield return null;
+                progress?.Report(AssetProgressShare + (1f - AssetProgressShare) * loaded / Math.Max(1, clips.Count));
+                if (loaded == clips.Count) return;
+                await UniTask.Yield(cancellationToken);
             }
         }
 

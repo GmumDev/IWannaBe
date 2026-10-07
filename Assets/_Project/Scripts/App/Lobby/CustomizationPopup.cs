@@ -1,6 +1,8 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
+using DG.Tweening;
 using IWannabe.Rhythm;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -54,6 +56,7 @@ namespace IWannabe.App
         [SerializeField, Min(0f)] float rightMargin = 40f;
         [SerializeField, Min(0.01f)] float shiftSeconds = 0.25f;
         [SerializeField, Min(0.01f)] float slideSeconds = 0.25f;
+        [SerializeField] Ease ease = Ease.OutCubic;
 
         [Header("Content")]
         [SerializeField] Button tabTemplate;
@@ -109,16 +112,16 @@ namespace IWannabe.App
         public void Open()
         {
             if (state != State.Closed || Wardrobe.Instance == null || Wardrobe.Instance.Catalog == null) return;
-            StartCoroutine(OpenRoutine());
+            OpenAsync(destroyCancellationToken).Forget();
         }
 
         public void Close()
         {
             if (state != State.Open) return;
-            StartCoroutine(CloseRoutine());
+            CloseAsync(destroyCancellationToken).Forget();
         }
 
-        IEnumerator OpenRoutine()
+        async UniTaskVoid OpenAsync(CancellationToken cancellationToken)
         {
             state = State.Opening;
             // 움직이는 동안 로비 버튼이 눌리지 않게 바로 막는다. 막을 눌러 닫는 건 다 열린 뒤부터다.
@@ -129,22 +132,22 @@ namespace IWannabe.App
             ShowTab(0);
             SetPanelX(HiddenX);
 
-            yield return Animate(shiftSeconds, t => SetScreenX(Mathf.Lerp(0f, ShiftX, t)));
-            yield return Animate(slideSeconds, t => SetPanelX(Mathf.Lerp(HiddenX, ShownX, t)));
+            await MoveX(screen, ShiftX, shiftSeconds, cancellationToken);
+            await MoveX(panel, ShownX, slideSeconds, cancellationToken);
 
             SetPanelInteractable(true);
             state = State.Open;
             Select(tabButtons[currentTab].gameObject);
         }
 
-        IEnumerator CloseRoutine()
+        async UniTaskVoid CloseAsync(CancellationToken cancellationToken)
         {
             state = State.Closing;
             SetPanelInteractable(false);
 
-            yield return Animate(slideSeconds, t => SetPanelX(Mathf.Lerp(ShownX, HiddenX, t)));
+            await MoveX(panel, HiddenX, slideSeconds, cancellationToken);
             panel.gameObject.SetActive(false);
-            yield return Animate(shiftSeconds, t => SetScreenX(Mathf.Lerp(ShiftX, 0f, t)));
+            await MoveX(screen, 0f, shiftSeconds, cancellationToken);
 
             outsideArea.gameObject.SetActive(false);
             state = State.Closed;
@@ -276,16 +279,9 @@ namespace IWannabe.App
 
         void SetPanelX(float x) => panel.anchoredPosition = new Vector2(x, panel.anchoredPosition.y);
 
-        static IEnumerator Animate(float seconds, Action<float> apply)
-        {
-            for (float elapsed = 0f; elapsed < seconds; elapsed += Time.unscaledDeltaTime)
-            {
-                apply(EaseOut(elapsed / seconds));
-                yield return null;
-            }
-            apply(1f);
-        }
-
-        static float EaseOut(float t) => 1f - (1f - t) * (1f - t) * (1f - t);
+        /// <summary>가로로만 옮기고 끝날 때까지 기다린다. 시간 배율과 무관하게 실제 시간으로 움직인다.</summary>
+        UniTask MoveX(RectTransform target, float x, float seconds, CancellationToken cancellationToken) =>
+            target.DOAnchorPosX(x, seconds).SetEase(ease).SetUpdate(true).SetLink(target.gameObject)
+                .ToUniTask(TweenCancelBehaviour.KillAndCancelAwait, cancellationToken);
     }
 }
