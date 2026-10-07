@@ -1,0 +1,27 @@
+{
+    "name": "IWannabe.Editor",
+    "rootNamespace": "IWannabe.EditorTools",
+    "references": [
+        "IWannabe.Rhythm.Core",
+        "IWannabe.Rhythm",
+        "IWannabe.Rhythm.Editor",
+        "IWannabe.Stages",
+        "IWannabe.App",
+        "Unity.Addressables",
+        "Unity.Addressables.Editor",
+        "Unity.ResourceManager",
+        "Unity.InputSystem",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

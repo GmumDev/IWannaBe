@@ -1,0 +1,17 @@
+{
+    "name": "IWannabe.Stages",
+    "rootNamespace": "IWannabe.Stages",
+    "references": [
+        "IWannabe.Rhythm.Core",
+        "IWannabe.Rhythm"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

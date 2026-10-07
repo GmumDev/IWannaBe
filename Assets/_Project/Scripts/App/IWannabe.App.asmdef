@@ -1,0 +1,20 @@
+{
+    "name": "IWannabe.App",
+    "rootNamespace": "IWannabe.App",
+    "references": [
+        "IWannabe.Rhythm.Core",
+        "IWannabe.Rhythm",
+        "Unity.Addressables",
+        "Unity.ResourceManager",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
