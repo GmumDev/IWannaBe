@@ -7,10 +7,14 @@ namespace IWannabe.Rhythm
     /// 버튼 하나짜리 입력을 노트에 매칭해 판정한다.
     /// 모든 입력이 같은 버튼이므로 "판정 범위 안에서 아직 판정되지 않은 가장 이른 노트"에 매칭한다.
     /// 시간은 모두 곡 시간(초) 기준이며, 호출하는 쪽에서 지연 보정을 적용해 넘긴다.
+    /// <para>
+    /// 판정하지 않는 노트(시작 지점 앞에서 시작한 패턴의 노트)는 <see cref="Skip"/>으로 빼 두고, 아직 화면에 오브젝트가 없는
+    /// 다음 구간 노트는 <see cref="OpenSegment"/>로 막는다. 판정은 오브젝트가 있는 노트에만 일어난다.
+    /// </para>
     /// </summary>
     public sealed class Judge
     {
-        enum State : byte { Pending, Holding, Done }
+        enum State : byte { Pending, Holding, Done, Skipped }
 
         public event Action<NoteJudgement> Judged;
         /// <summary>매칭되는 노트가 없는 입력(헛치기). 인자는 입력 시각.</summary>
@@ -32,8 +36,24 @@ namespace IWannabe.Rhythm
 
         public bool IsHolding => holdingIndex >= 0;
 
-        /// <summary>노트 판정이 모두 끝났는지(홀드는 뗌까지). 노트 목록은 <see cref="TimelineNote.Id"/> 순이어야 한다.</summary>
-        public bool IsFinished(TimelineNote note) => states[note.Id] == State.Done;
+        /// <summary>
+        /// 판정하는 마지막 구간. 이 구간까지의 노트만 판정한다. 다음 구간 노트는 그 구간 연출이 들어와 오브젝트가 생긴 뒤에 판정한다.
+        /// </summary>
+        public int OpenSegment { get; set; } = int.MaxValue;
+
+        /// <summary>노트 판정이 모두 끝났는지(홀드는 뗌까지, 판정하지 않는 노트 포함). 노트 목록은 <see cref="TimelineNote.Id"/> 순이어야 한다.</summary>
+        public bool IsFinished(TimelineNote note) => states[note.Id] >= State.Done;
+
+        /// <summary>판정하지 않는 노트로 빠졌는지.</summary>
+        public bool IsSkipped(TimelineNote note) => states[note.Id] == State.Skipped;
+
+        /// <summary>판정하지 않는 노트로 뺀다. 판정 이벤트 없이 끝난 것으로 친다. 판정이 시작되기 전에 부른다.</summary>
+        public void Skip(TimelineNote note)
+        {
+            if (states[note.Id] != State.Pending) return;
+            states[note.Id] = State.Skipped;
+            AdvanceScan();
+        }
 
         /// <summary>이 홀드 노트의 누름 판정이 끝나 뗌을 기다리는 중인지.</summary>
         public bool IsHoldingNote(TimelineNote note) => holdingIndex == note.Id;
@@ -51,7 +71,7 @@ namespace IWannabe.Rhythm
             {
                 var candidate = notes[i];
                 if (candidate.Time - windows.barely > time) break;
-                if (states[i] != State.Pending) continue;
+                if (states[i] != State.Pending || candidate.Segment > OpenSegment) continue;
                 if (Math.Abs(time - candidate.Time) <= windows.barely)
                 {
                     hit = i;
@@ -112,7 +132,7 @@ namespace IWannabe.Rhythm
             {
                 var note = notes[i];
                 if (note.Time + windows.barely >= time) break;
-                if (states[i] != State.Pending) continue;
+                if (states[i] != State.Pending || note.Segment > OpenSegment) continue;
 
                 states[i] = State.Done;
                 Judged?.Invoke(new NoteJudgement(note, NotePhase.Press, JudgeGrade.Miss, double.NaN));
@@ -136,7 +156,7 @@ namespace IWannabe.Rhythm
 
         void AdvanceScan()
         {
-            while (scan < notes.Count && states[scan] == State.Done) scan++;
+            while (scan < notes.Count && states[scan] >= State.Done) scan++;
         }
     }
 }

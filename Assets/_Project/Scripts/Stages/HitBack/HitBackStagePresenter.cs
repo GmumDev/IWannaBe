@@ -131,16 +131,12 @@ namespace IWannabe.Stages.HitBack
             otamaton.Rest();
         }
 
-        public override void OnPatternSpawn(TimelinePattern pattern)
+        /// <summary>종(bell)이 예고한 노트는 선반에 줄서는 공, 나머지는 예고 큐 모양대로 날아오는 공이다.</summary>
+        protected override void OnNoteSpawn(TimelineNote note, TimelinePattern pattern)
         {
-            foreach (var cue in pattern.Cues)
-            {
-                if (cue.TargetNoteId < 0) continue;
-
-                var note = Context.Timeline.Notes[cue.TargetNoteId];
-                if (cue.CueId == HitBackCues.Bell) SpawnEchoBall(pattern, cue, note);
-                else SpawnFlyingBall(note, cue.Beat, cue.CueId);
-            }
+            var cue = note.Cue;
+            if (cue.CueId == HitBackCues.Bell) SpawnEchoBall(pattern, cue, note);
+            else SpawnFlyingBall(note, cue.Beat, cue.CueId);
         }
 
         /// <summary>

@@ -8,9 +8,13 @@ namespace IWannabe.Rhythm
 {
     /// <summary>
     /// 플레이 중 진행 상태를 화면 왼쪽에 보여 주는 디버그 패널(IMGUI). 지금 치는 패턴의 큐·노트, 다가오는 노트,
-    /// 구간·이어받기, 판정 통계와 평균 오차, 곡 시간·박·BPM, 지연 보정, 입력, 프레임을 띄운다.
-    /// 보여 주기만 하고 입력은 받지 않는다. 에디터·개발 빌드에서만 켜지고, F3을 누를 때마다
-    /// 자세히 → 간단히(투수 쪽을 가리지 않는 짧은 요약) → 끄기 순서로 바뀐다.
+    /// 구간·이어받기, 판정 통계와 평균 오차, 곡 시간·박·BPM, 지연 보정, 채보 재생 기록(소리·오브젝트·판정), 입력, 프레임을 띄운다.
+    /// 에디터·개발 빌드에서만 켜지고, F3을 누를 때마다 자세히 → 간단히(투수 쪽을 가리지 않는 짧은 요약) → 끄기 순서로 바뀐다.
+    /// <para>
+    /// 시작 지점 재생: 곡의 아무 지점부터 판을 다시 시작한다(<see cref="StageRunner.Restart"/>). 시작 지점 이후에 시작하는 패턴만 나온다.
+    /// F6/F7 한 마디 앞/뒤, Shift+F6/F7 이전/다음 구간 시작, F8 지금 곡 위치로 시작 지점을 고르고 F5로 다시 시작한다.
+    /// 마우스 클릭은 리듬 입력으로도 들어가므로 키로만 다룬다. 패널을 꺼 둬도 키는 동작한다.
+    /// </para>
     /// </summary>
     public sealed class StageDebugPanel : MonoBehaviour
     {
@@ -60,6 +64,8 @@ namespace IWannabe.Rhythm
         int heldInputs;
         double lastPressTime = double.NaN;
         float smoothedFrameSeconds;
+        /// <summary>F5로 다시 시작할 곡 시각(초).</summary>
+        double startPoint;
 
         void Awake()
         {
@@ -84,6 +90,7 @@ namespace IWannabe.Rhythm
 
         void OnEnable()
         {
+            runner.Started += OnStarted;
             runner.NoteJudged += OnJudged;
             runner.NoteWhiffed += OnWhiffed;
             input.Pressed += OnPressed;
@@ -92,6 +99,7 @@ namespace IWannabe.Rhythm
 
         void OnDisable()
         {
+            runner.Started -= OnStarted;
             runner.NoteJudged -= OnJudged;
             runner.NoteWhiffed -= OnWhiffed;
             input.Pressed -= OnPressed;
@@ -106,7 +114,11 @@ namespace IWannabe.Rhythm
         void Update()
         {
             var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.f3Key.wasPressedThisFrame) mode = (Mode)(((int)mode + 1) % 3);
+            if (keyboard != null)
+            {
+                if (keyboard.f3Key.wasPressedThisFrame) mode = (Mode)(((int)mode + 1) % 3);
+                HandleStartPointKeys(keyboard);
+            }
 
             float frame = Time.unscaledDeltaTime;
             smoothedFrameSeconds = smoothedFrameSeconds <= 0f ? frame : Mathf.Lerp(smoothedFrameSeconds, frame, 0.1f);
@@ -173,9 +185,11 @@ namespace IWannabe.Rhythm
             double beat = conductor.SongBeat;
             CollectUpcoming(timeline, judge);
             AppendStage(definition, time, beat);
+            AppendStartPoint(definition, timeline);
             AppendSegment(definition, timeline, beat);
             AppendNotes(definition, timeline, judge, time, beat);
             AppendScore();
+            AppendPlayback();
             if (Full) AppendInputAndChart(definition, timeline);
             content.text = text.ToString();
         }
@@ -208,6 +222,44 @@ namespace IWannabe.Rhythm
             text.Append($" · BPM {bpm:0.0}\n");
             if (Full)
                 text.Append($"출력 지연 보정 {conductor.OutputLatency * 1000:0}ms · 입력 보정 {runner.InputOffsetSeconds * 1000:+0;-0;0}ms\n");
+        }
+
+        void AppendStartPoint(StageDefinition definition, ChartTimeline timeline)
+        {
+            text.Append(Full ? $"<b><color={TitleColor}>시작 지점</color></b> " : "시작 지점 ");
+            text.Append(PointLabel(definition, timeline, startPoint)).Append('\n');
+            if (Full) text.Append(Colored("F5 다시 시작 · F6/F7 마디 · Shift 구간 · F8 지금", DimColor)).Append('\n');
+            var playback = runner.Playback;
+            if (playback != null && !playback.IsFullPlay)
+            {
+                text.Append($"이번 판 {playback.StartTime:0.000}s부터 · 패턴 {playback.Patterns.Count}/{timeline.Patterns.Count}개");
+                if (Full) text.Append(" · 클리어 기록 안 남김");
+                text.Append('\n');
+            }
+        }
+
+        /// <summary>채보 재생 기록. 재생하는 패턴의 소리·오브젝트·판정이 따로 놀면 위반으로 센다.</summary>
+        void AppendPlayback()
+        {
+            var playback = runner.Playback;
+            if (playback == null) return;
+            int problems = playback.ViolationCount;
+            if (!Full)
+            {
+                text.Append($"채보 묶음 위반 {Warn(problems)}");
+                if (playback.LateSoundCount > 0) text.Append($" · 늦은 큐 소리 {Warn(playback.LateSoundCount)}");
+                text.Append('\n');
+                return;
+            }
+            Section("채보 재생");
+            text.Append($"패턴 {playback.SpawnedPatternCount}/{playback.Patterns.Count} · 큐 알림 {playback.ShownCueCount}/{playback.Cues.Count} · " +
+                        $"큐 소리 {playback.SoundedCueCount}/{playback.Cues.Count} · 판정 {playback.JudgedPartCount}/{playback.JudgementPartCount}\n");
+            text.Append($"묶음 위반 {Warn(problems)} · 늦은 큐 소리 {Warn(playback.LateSoundCount)}");
+            if (runner.CurrentState == StageRunner.State.Finished) text.Append($" · 빠진 것이 있는 패턴 {Warn(runner.IncompletePatternCount)}");
+            // 재개는 멈춘 시각에서 이어간다. 그 시각을 보여 줘 ESC 앞뒤가 같은지 확인할 수 있게 한다.
+            if (!double.IsNaN(runner.LastPauseTime)) text.Append($" · 마지막 일시정지 {runner.LastPauseTime:0.000}s");
+            text.Append('\n');
+            if (problems > 0 && playback.Violations.Count > 0) text.Append(Colored(playback.Violations[0], MissColor)).Append('\n');
         }
 
         void AppendSegment(StageDefinition definition, ChartTimeline timeline, double beat)
@@ -333,7 +385,81 @@ namespace IWannabe.Rhythm
             }
         }
 
+        // ───────── 시작 지점 ─────────
+
+        void HandleStartPointKeys(Keyboard keyboard)
+        {
+            var definition = runner.Definition;
+            var timeline = runner.Timeline;
+            var tempo = conductor.TempoMap;
+            if (definition == null || timeline == null || tempo == null) return;
+
+            bool shift = keyboard.shiftKey.isPressed;
+            if (keyboard.f6Key.wasPressedThisFrame) startPoint = shift ? SegmentStartBefore(timeline, startPoint) : BarStartFrom(definition.Song, tempo, startPoint, -1);
+            if (keyboard.f7Key.wasPressedThisFrame) startPoint = shift ? SegmentStartAfter(timeline, startPoint) : BarStartFrom(definition.Song, tempo, startPoint, 1);
+            if (keyboard.f8Key.wasPressedThisFrame) startPoint = conductor.SongTime;
+            startPoint = Math.Max(0, Math.Min(startPoint, definition.Song.Clip.length));
+            if (keyboard.f5Key.wasPressedThisFrame) runner.Restart(startPoint);
+        }
+
+        /// <summary><paramref name="time"/>의 다음(<paramref name="direction"/> 1) 또는 이전(-1) 마디 시작 시각. 마디 시작에 딱 있으면 한 마디 옮긴다.</summary>
+        static double BarStartFrom(SongData song, TempoMap tempo, double time, int direction)
+        {
+            int beatsPerBar = Math.Max(1, song.BeatsPerBar);
+            double bar = (tempo.TimeToBeat(time) - song.FirstDownbeatIndex) / beatsPerBar;
+            double target = direction > 0 ? Math.Floor(bar + 1e-6) + 1 : Math.Ceiling(bar - 1e-6) - 1;
+            return tempo.BeatToTime(song.FirstDownbeatIndex + target * beatsPerBar);
+        }
+
+        /// <summary>구간이 시작하는 곡 시각. 첫 구간은 곡 처음(0초)이다.</summary>
+        static double SegmentStart(TimelineSegment segment) => segment.Index == 0 ? 0 : segment.StartTime;
+
+        static double SegmentStartBefore(ChartTimeline timeline, double time)
+        {
+            double result = 0;
+            foreach (var segment in timeline.Segments)
+                if (SegmentStart(segment) < time - 1e-6) result = SegmentStart(segment);
+            return result;
+        }
+
+        static double SegmentStartAfter(ChartTimeline timeline, double time)
+        {
+            foreach (var segment in timeline.Segments)
+                if (SegmentStart(segment) > time + 1e-6) return SegmentStart(segment);
+            return time;
+        }
+
+        string PointLabel(StageDefinition definition, ChartTimeline timeline, double time)
+        {
+            var song = definition.Song;
+            int beatsPerBar = Math.Max(1, song.BeatsPerBar);
+            double fromDownbeat = conductor.TempoMap.TimeToBeat(time) - song.FirstDownbeatIndex;
+            int bar = (int)Math.Floor(fromDownbeat / beatsPerBar + 1e-6);
+            double beatInBar = Math.Max(0, fromDownbeat - bar * beatsPerBar);
+            int segment = 0;
+            while (segment + 1 < timeline.Segments.Count && timeline.Segments[segment + 1].SwitchTime <= time) segment++;
+            int patterns = 0;
+            foreach (var pattern in timeline.Patterns)
+                if (ChartPlayback.StartsAtOrAfter(pattern, time)) patterns++;
+            return $"{time:0.000}s · {bar + 1}마디 {beatInBar + 1:0.0}박 · 구간 {segment + 1} " +
+                   $"{MinigameLabel(definition, timeline.Segments[segment].MinigameId)} · 패턴 {patterns}개";
+        }
+
         // ───────── 이벤트 집계 ─────────
+
+        /// <summary>판이 새로 시작되면 앞 판의 집계를 지운다.</summary>
+        void OnStarted(StageRunner started)
+        {
+            recent.Clear();
+            pressResults.Clear();
+            releaseResults.Clear();
+            noteCursor = 0;
+            whiffs = 0;
+            timedInputs = 0;
+            deltaSum = 0;
+            deltaSquareSum = 0;
+            lastPressTime = double.NaN;
+        }
 
         void OnJudged(NoteJudgement judgement)
         {
@@ -365,6 +491,7 @@ namespace IWannabe.Rhythm
             pressResults.TryGetValue(note.Id, out var press);
             releaseResults.TryGetValue(note.Id, out var release);
             if (judge.IsHoldingNote(note)) return $"{Colored("누르는 중", CarryColor)} 누름 {Result(press)}";
+            if (judge.IsSkipped(note)) return Colored("시작 지점 앞이라 빠짐", DimColor);
             if (!judge.IsFinished(note)) return "대기";
             if (note.Type == NoteType.Hold) return $"누름 {Result(press)} · 뗌 {Result(release)}";
             return Result(press);

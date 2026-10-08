@@ -31,6 +31,8 @@ namespace IWannabe.Stages.Slice
             public float ArcHeight;
             public float SpinPerBeat;
             public Vector3 StartPosition;
+            /// <summary>떨어지기 시작할 때의 각도. 떨어지는 동안 곡 시간에 따라 돈다.</summary>
+            public float StartAngle;
             public Vector3 Velocity;
             public double StateTime;
         }
@@ -153,16 +155,12 @@ namespace IWannabe.Stages.Slice
             otamaton.Rest();
         }
 
-        public override void OnPatternSpawn(TimelinePattern pattern)
+        /// <summary>징(gong)이 예고한 노트는 선반에 줄서는 등롱, 나머지는 예고 큐 모양대로 날아오는 물건이다.</summary>
+        protected override void OnNoteSpawn(TimelineNote note, TimelinePattern pattern)
         {
-            foreach (var cue in pattern.Cues)
-            {
-                if (cue.TargetNoteId < 0) continue;
-
-                var note = Context.Timeline.Notes[cue.TargetNoteId];
-                if (cue.CueId == SliceCues.Gong) SpawnEchoLantern(pattern, cue, note);
-                else SpawnThrownItem(note, cue.Beat, cue.CueId);
-            }
+            var cue = note.Cue;
+            if (cue.CueId == SliceCues.Gong) SpawnEchoLantern(pattern, cue, note);
+            else SpawnThrownItem(note, cue.Beat, cue.CueId);
         }
 
         /// <summary>
@@ -431,7 +429,7 @@ namespace IWannabe.Stages.Slice
                     {
                         float dt = (float)(songTime - item.StateTime);
                         t.position = item.StartPosition + item.Velocity * dt + Vector3.up * (0.5f * Gravity * dt * dt);
-                        t.Rotate(0f, 0f, -300f * Time.deltaTime);
+                        t.rotation = Quaternion.Euler(0f, 0f, item.StartAngle - 300f * dt);
                         var c = item.Sprite.color;
                         c.a = Mathf.Clamp01(1f - dt / 1.2f);
                         item.Sprite.color = c;
@@ -498,6 +496,7 @@ namespace IWannabe.Stages.Slice
             item.State = ItemState.Dropped;
             item.StateTime = now;
             item.StartPosition = item.Sprite.transform.position;
+            item.StartAngle = item.Sprite.transform.eulerAngles.z;
             item.Velocity = new Vector3(2.5f, 2f, 0f);
             item.Sprite.color = Color.Lerp(item.Sprite.color, Color.gray, 0.5f);
         }

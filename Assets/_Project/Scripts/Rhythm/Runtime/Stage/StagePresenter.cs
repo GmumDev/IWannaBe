@@ -34,20 +34,19 @@ namespace IWannabe.Rhythm
     public readonly struct CarriedNote
     {
         public readonly TimelineNote Note;
-        /// <summary>이 노트를 예고한 앞 미니게임의 큐. 예고 큐가 없는 노트면 null.</summary>
-        public readonly TimelineCue Cue;
         /// <summary>홀드를 이미 누르고 있다(누름 판정이 끝나고 뗌만 남았다).</summary>
         public readonly bool Holding;
 
-        public CarriedNote(TimelineNote note, TimelineCue cue, bool holding)
+        public CarriedNote(TimelineNote note, bool holding)
         {
             Note = note;
-            Cue = cue;
             Holding = holding;
         }
 
-        /// <summary>예고가 시작된 박. 예고 큐가 없으면 입력 1박 전으로 본다.</summary>
-        public double LaunchBeat => Cue != null ? Cue.Beat : Note.Beat - 1;
+        /// <summary>이 노트를 예고한 앞 미니게임의 큐.</summary>
+        public TimelineCue Cue => Note.Cue;
+        /// <summary>예고가 시작된 박.</summary>
+        public double LaunchBeat => Note.Cue.Beat;
         /// <summary>예고부터 입력까지의 박 수. 새 연출이 어떤 모습(1박 물건, 2박 물건 등)으로 보여 줄지 고를 때 쓴다.</summary>
         public double LeadBeats => Note.Beat - LaunchBeat;
     }
@@ -59,6 +58,10 @@ namespace IWannabe.Rhythm
     /// 연출은 곡 중간에 들어오고 나갈 수 있어야 한다(리믹스·연습). 코어는 구간 시작 박에 바로 <see cref="ExitSegment"/>,
     /// <see cref="EnterSegment"/> 순서로 부르고, 앞 구간에서 입력이 남은 노트를 새 연출에 넘긴다(<see cref="OnCarryNote"/>).
     /// 들어온 뒤로는 그 구간의 패턴·큐와, 이어받은 노트를 포함한 모든 판정·입력이 이 연출로 온다.
+    /// </para>
+    /// <para>
+    /// 패턴은 노트마다 <see cref="OnNoteSpawn"/>으로 준비시킨다. 판정을 받는 노트마다 오브젝트가 반드시 하나 생겨야 하므로
+    /// 추상 메서드다. 큐 소리는 코어가 예약하고, 연출은 큐 시각에 <see cref="OnCue"/>로 시각 신호를 낸다.
     /// 규칙 전체는 Docs/Design/05_MinigameRules.md에 있다.
     /// </para>
     /// </summary>
@@ -115,8 +118,17 @@ namespace IWannabe.Rhythm
         /// <summary>구간을 떠나기 직전. 남은 오브젝트는 다음에 들어올 때 치우면 되므로 보통 비워 둔다.</summary>
         protected virtual void OnSegmentExit() { }
 
-        /// <summary>패턴의 첫 큐보다 조금 먼저 호출된다. 오브젝트를 미리 준비할 때 쓴다.</summary>
-        public virtual void OnPatternSpawn(TimelinePattern pattern) { }
+        /// <summary>패턴의 첫 큐보다 조금 먼저 코어가 부른다. 패턴의 노트마다 <see cref="OnNoteSpawn"/>을 한 번씩 부른다.</summary>
+        public void SpawnPattern(TimelinePattern pattern)
+        {
+            foreach (var note in pattern.Notes) OnNoteSpawn(note, pattern);
+        }
+
+        /// <summary>
+        /// 노트 하나의 오브젝트를 준비한다. 예고 큐(<see cref="TimelineNote.Cue"/>)의 cueId로 모양을 고르고,
+        /// 예고 큐의 박에 나타나 노트 박에 타격 지점에 닿게 한다. 이 노트의 판정은 이 오브젝트로 보여 준다.
+        /// </summary>
+        protected abstract void OnNoteSpawn(TimelineNote note, TimelinePattern pattern);
 
         /// <summary>큐 시각에 호출된다. 효과음은 코어가 이미 예약해 두었다. 소리가 없어도 알아볼 시각 신호를 여기서(또는 그 전에) 낸다.</summary>
         public virtual void OnCue(TimelineCue cue) { }

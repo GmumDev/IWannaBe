@@ -125,7 +125,8 @@ namespace IWannabe.Rhythm
             Select(pauseExitButton);
         }
 
-        public void ShowResult(ScoreTracker score, bool cleared)
+        /// <param name="fullPlay">곡 전체를 쳤는지. 시작 지점부터 친 판은 클리어 기록을 남기지 않는다고 알린다.</param>
+        public void ShowResult(ScoreTracker score, bool cleared, bool fullPlay = true)
         {
             pausePanel.SetActive(false);
             resultPanel.SetActive(true);
@@ -135,13 +136,18 @@ namespace IWannabe.Rhythm
                 case StageRank.Ok: resultRankText.text = "괜찮아요"; break;
                 default: resultRankText.text = "다시 도전!"; break;
             }
-            string clearLine = cleared
-                ? "클리어!"
-                : $"정확도 {ScoreTracker.OkThreshold * 100:0}% 이상이면 클리어";
+            string clearLine = !fullPlay
+                ? "시작 지점부터 친 판이라 클리어 기록을 남기지 않습니다"
+                : cleared
+                    ? "클리어!"
+                    : $"정확도 {ScoreTracker.OkThreshold * 100:0}% 이상이면 클리어";
             resultDetailText.text =
                 $"정확도 {score.Accuracy * 100:0}%\nPerfect {score.Perfect}   아슬아슬 {score.Barely}   Miss {score.Miss}\n{clearLine}";
             Select(resultRetryButton);
         }
+
+        /// <summary>결과 패널을 닫는다(같은 씬에서 판을 다시 시작할 때).</summary>
+        public void HideResult() => resultPanel.SetActive(false);
 
         static void Select(Selectable selectable)
         {

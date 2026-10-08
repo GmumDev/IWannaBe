@@ -16,6 +16,8 @@ namespace IWannabe.Rhythm
         /// <summary>Hold의 뗌 시점. Tap이면 누름 시점과 같다.</summary>
         public double EndBeat;
         public double EndTime;
+        /// <summary>이 노트를 예고하는 큐(같은 패턴에서 이 노트를 대상으로 하는 첫 큐). 모든 노트에 있다.</summary>
+        public TimelineCue Cue;
     }
 
     public sealed class TimelineCue
@@ -72,7 +74,8 @@ namespace IWannabe.Rhythm
 
     /// <summary>
     /// 박 단위로 저장된 채보를 템포 맵으로 초 단위까지 풀어 놓은 플레이용 타임라인.
-    /// 노트와 큐는 각각 시간순으로 정렬돼 있다.
+    /// 노트와 큐는 각각 시간순으로 정렬돼 있다. 노트마다 그 노트를 예고하는 큐가 있어야 한다(<see cref="TimelineNote.Cue"/>).
+    /// 큐가 소리와 오브젝트를 내고 노트가 판정을 받으므로, 예고 큐가 없는 노트는 판정만 있는 노트가 된다.
     /// </summary>
     public sealed class ChartTimeline
     {
@@ -178,6 +181,15 @@ namespace IWannabe.Rhythm
                 cue.Id = i;
                 if (cue.TargetNoteId <= -2)
                     cue.TargetNoteId = timeline.patterns[cue.PatternIndex].Notes[-2 - cue.TargetNoteId].Id;
+                if (cue.TargetNoteId >= 0 && timeline.notes[cue.TargetNoteId].Cue == null)
+                    timeline.notes[cue.TargetNoteId].Cue = cue;
+            }
+            foreach (var note in timeline.notes)
+            {
+                if (note.Cue != null) continue;
+                var owner = timeline.patterns[note.PatternIndex];
+                throw new ArgumentException($"패턴 '{owner.PatternId}'(앵커 {owner.AnchorBeat}박)의 노트 {note.IndexInPattern + 1}을 예고하는 큐가 없습니다. " +
+                                            "노트마다 그 노트를 대상으로 하는 큐가 있어야 소리·오브젝트·판정이 함께 나옵니다.");
             }
 
             // 연출 쪽이 미리 준비할 수 있도록 패턴은 시작 시각 순으로 둔다.
