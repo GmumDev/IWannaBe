@@ -36,11 +36,22 @@ namespace IWannabe.Stages
             ring.Hide();
         }
 
-        /// <summary>홀드 큐가 울릴 때 호출한다.</summary>
-        public void Begin(TimelineNote holdNote)
+        /// <summary>링을 숨기고 처음 상태로 돌린다. 연출이 구간에 들어올 때 부른다.</summary>
+        public void Reset()
+        {
+            phase = Phase.Hidden;
+            note = null;
+            ring.Hide();
+        }
+
+        /// <summary>
+        /// 홀드 큐가 울릴 때 호출한다. 앞 미니게임에서 홀드를 이어받을 때는 이미 누르고 있으면
+        /// <paramref name="alreadyHolding"/>를 켜서 누름 박부터 차오른 상태로 시작한다.
+        /// </summary>
+        public void Begin(TimelineNote holdNote, bool alreadyHolding = false)
         {
             note = holdNote;
-            phase = Phase.Waiting;
+            phase = alreadyHolding ? Phase.Holding : Phase.Waiting;
             ring.Show(trackColor, fillColor);
         }
 

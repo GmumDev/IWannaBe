@@ -15,6 +15,7 @@ MonoBehaviour:
   patterns:
   - patternId: throw
     anchorBeat: 4
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -25,6 +26,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: lob
     anchorBeat: 6
+    segment: 0
     cues:
     - offset: -2
       cueId: lob
@@ -35,6 +37,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: throw
     anchorBeat: 8
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -45,6 +48,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: echo
     anchorBeat: 16
+    segment: 0
     cues:
     - offset: -4
       cueId: bell
@@ -73,6 +77,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: throw
     anchorBeat: 20
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -83,6 +88,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: double
     anchorBeat: 23
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -99,6 +105,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: throw
     anchorBeat: 25
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -109,6 +116,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: lob
     anchorBeat: 28
+    segment: 0
     cues:
     - offset: -2
       cueId: lob
@@ -119,6 +127,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: echo
     anchorBeat: 32
+    segment: 0
     cues:
     - offset: -4
       cueId: bell
@@ -147,6 +156,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: throw
     anchorBeat: 36
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -157,6 +167,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: double
     anchorBeat: 37
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -173,6 +184,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: throw
     anchorBeat: 41
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -183,6 +195,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: double
     anchorBeat: 42
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -199,6 +212,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: throw
     anchorBeat: 44
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -209,6 +223,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: lob
     anchorBeat: 48
+    segment: 0
     cues:
     - offset: -2
       cueId: lob
@@ -219,6 +234,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: charge
     anchorBeat: 49
+    segment: 0
     cues:
     - offset: -1
       cueId: charge
@@ -232,6 +248,7 @@ MonoBehaviour:
       holdBeats: 2
   - patternId: throw
     anchorBeat: 52
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -242,6 +259,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: echo
     anchorBeat: 64
+    segment: 0
     cues:
     - offset: -4
       cueId: bell
@@ -270,6 +288,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: double
     anchorBeat: 69
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -286,6 +305,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: throw
     anchorBeat: 71
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -296,6 +316,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: charge
     anchorBeat: 72
+    segment: 0
     cues:
     - offset: -1
       cueId: charge
@@ -309,6 +330,7 @@ MonoBehaviour:
       holdBeats: 2
   - patternId: throw
     anchorBeat: 75
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -319,6 +341,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: throw
     anchorBeat: 76
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -329,6 +352,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: lob
     anchorBeat: 79
+    segment: 0
     cues:
     - offset: -2
       cueId: lob
@@ -339,6 +363,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: charge
     anchorBeat: 80
+    segment: 0
     cues:
     - offset: -1
       cueId: charge
@@ -352,6 +377,7 @@ MonoBehaviour:
       holdBeats: 2
   - patternId: lob
     anchorBeat: 84
+    segment: 0
     cues:
     - offset: -2
       cueId: lob
@@ -362,6 +388,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: echo
     anchorBeat: 88
+    segment: 0
     cues:
     - offset: -4
       cueId: bell
@@ -384,6 +411,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: throw
     anchorBeat: 92
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -394,6 +422,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: double
     anchorBeat: 95
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -410,6 +439,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: charge
     anchorBeat: 97
+    segment: 0
     cues:
     - offset: -1
       cueId: charge
@@ -423,6 +453,7 @@ MonoBehaviour:
       holdBeats: 2
   - patternId: throw
     anchorBeat: 100
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -433,6 +464,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: echo
     anchorBeat: 104
+    segment: 0
     cues:
     - offset: -3
       cueId: bell
@@ -461,6 +493,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: throw
     anchorBeat: 117
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -471,6 +504,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: charge
     anchorBeat: 118
+    segment: 0
     cues:
     - offset: -1
       cueId: charge
@@ -484,6 +518,7 @@ MonoBehaviour:
       holdBeats: 2
   - patternId: double
     anchorBeat: 121
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -500,6 +535,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: throw
     anchorBeat: 123
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -510,6 +546,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: throw
     anchorBeat: 124
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -520,6 +557,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: charge
     anchorBeat: 128
+    segment: 0
     cues:
     - offset: -1
       cueId: charge
@@ -533,6 +571,7 @@ MonoBehaviour:
       holdBeats: 2
   - patternId: throw
     anchorBeat: 132
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -543,6 +582,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: lob
     anchorBeat: 140
+    segment: 0
     cues:
     - offset: -2
       cueId: lob
@@ -553,6 +593,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: throw
     anchorBeat: 141
+    segment: 0
     cues:
     - offset: -1
       cueId: throw
@@ -561,6 +602,7 @@ MonoBehaviour:
     - offset: 0
       type: 0
       holdBeats: 0
-  generationInfo: "\uC2DC\uB4DC 20261007, \uB09C\uC774\uB3C4 3, 2026-10-07 12:52\n\uAD6C\uC808
+  segments: []
+  generationInfo: "\uC2DC\uB4DC 20261007, \uB09C\uC774\uB3C4 3, 2026-10-08 13:22\n\uAD6C\uC808
     15/18 \uD65C\uC131, \uD328\uD134 41\uAC1C, \uB178\uD2B8 61\uAC1C (charge 6, double
     6, echo 5, lob 6, throw 18)"

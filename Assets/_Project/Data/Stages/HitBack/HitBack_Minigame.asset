@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2622215ad1ad69b469c88d05ed3ce498, type: 3}
+  m_Name: HitBack_Minigame
+  m_EditorClassIdentifier: IWannabe.Rhythm::IWannabe.Rhythm.MinigameDefinition
+  minigameId: hitback
+  displayName: "\uBC1B\uC544\uCE58\uAE30"
+  presenterPrefab: {fileID: 8486971393371379572, guid: 3384e21e754954d439ae6c99d35f2a82, type: 3}
+  cueSounds:
+  - cueId: throw
+    clip: {fileID: 8300000, guid: 07edcf90a533a304083ef199fe171781, type: 3}
+    volume: 0.9
+  - cueId: lob
+    clip: {fileID: 8300000, guid: 508e3dcbd5711024dbdf29c3a77f5c94, type: 3}
+    volume: 0.9
+  - cueId: charge
+    clip: {fileID: 8300000, guid: cd235e22384ea5249b3e020bce72c582, type: 3}
+    volume: 0.8
+  - cueId: tick
+    clip: {fileID: 8300000, guid: 44587579912031a409eb2881c1a9f57b, type: 3}
+    volume: 0.8
+  - cueId: bell
+    clip: {fileID: 8300000, guid: 9fae1fbd0f90287448e0336f0051a0a6, type: 3}
+    volume: 0.9
+  backgroundColor: {r: 0.99215686, g: 0.9411765, b: 0.8352941, a: 1}
+  hudInkColor: {r: 0.14901961, g: 0.27450982, b: 0.3254902, a: 1}
+  cameraSize: 5
+  minVisibleHalfWidth: 7.5

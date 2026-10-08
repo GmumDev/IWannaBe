@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d2ddf583ff2757c4b9d1cdfb947a48df, type: 3}
+  m_Name: Remix1_StageDefinition
+  m_EditorClassIdentifier: IWannabe.Rhythm::IWannabe.Rhythm.StageDefinition
+  stageId: remix1
+  displayName: "\uB9AC\uBBF9\uC2A4"
+  song: {fileID: 11400000, guid: a547cb37c7b71554f8e5f1cbbf298be7, type: 2}
+  chart: {fileID: 11400000, guid: e9897c2f5d636844482b1398543037b6, type: 2}
+  minigames:
+  - {fileID: 11400000, guid: c420c42d091742d41aec154f7cfa397d, type: 2}
+  - {fileID: 11400000, guid: 8437c99cd680c994799c04511a38fb9c, type: 2}
+  musicVolume: 0.9

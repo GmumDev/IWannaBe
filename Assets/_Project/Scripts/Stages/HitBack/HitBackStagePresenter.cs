@@ -19,7 +19,8 @@ namespace IWannabe.Stages.HitBack
         sealed class Ball
         {
             public SpriteRenderer Sprite;
-            public TimelineCue Cue;
+            /// <summary>공이 나타나 움직이기 시작하는 박(예고 큐의 박).</summary>
+            public double LaunchBeat;
             public TimelineNote Note;
             public BallState State;
             /// <summary>따라 치기 공: 종이 울리면 선반에 줄섰다가 응답 박에 떨어진다.</summary>
@@ -108,6 +109,28 @@ namespace IWannabe.Stages.HitBack
             ringDriver = new HoldRingDriver(holdRing, chargeColor, barelyFlashColor, Color.gray);
         }
 
+        /// <summary>앞 구간에서 남은 공·번쩍임·홀드 표시를 치우고 투수·타자를 쉬는 자세로 돌린다.</summary>
+        protected override void OnSegmentEnter(TimelineSegment segment)
+        {
+            for (int i = balls.Count - 1; i >= 0; i--) Despawn(i);
+            ballByNote.Clear();
+            foreach (var flash in flashes)
+            {
+                flash.Sprite.gameObject.SetActive(false);
+                flashPool.Push(flash.Sprite);
+            }
+            flashes.Clear();
+
+            swingStart = double.NegativeInfinity;
+            pitcherKick = double.NegativeInfinity;
+            holding = false;
+            pitcher.localScale = pitcherScale;
+            batter.localScale = batterScale;
+            SetPaddle(paddleRestAngle);
+            ringDriver.Reset();
+            otamaton.Rest();
+        }
+
         public override void OnPatternSpawn(TimelinePattern pattern)
         {
             foreach (var cue in pattern.Cues)
@@ -115,29 +138,56 @@ namespace IWannabe.Stages.HitBack
                 if (cue.TargetNoteId < 0) continue;
 
                 var note = Context.Timeline.Notes[cue.TargetNoteId];
-                if (cue.CueId == HitBackCues.Bell)
-                {
-                    SpawnEchoBall(pattern, cue, note);
-                    continue;
-                }
-
-                float flightBeats = (float)(note.Beat - cue.Beat);
-                var ball = new Ball
-                {
-                    Sprite = RentBall(),
-                    Cue = cue,
-                    Note = note,
-                    State = BallState.Waiting,
-                    Size = cue.CueId == HitBackCues.Lob ? 0.75f : cue.CueId == HitBackCues.Charge ? 0.95f : 0.5f,
-                    ArcHeight = 1.4f * flightBeats + (cue.CueId == HitBackCues.Lob ? 1f : 0f),
-                };
-                ball.Sprite.color = ColorFor(cue.CueId);
-                ball.Sprite.transform.localScale = Vector3.one * ball.Size;
-                ball.Sprite.transform.position = releasePoint.position;
-                ball.Sprite.gameObject.SetActive(false);
-                balls.Add(ball);
-                ballByNote[note.Id] = ball;
+                if (cue.CueId == HitBackCues.Bell) SpawnEchoBall(pattern, cue, note);
+                else SpawnFlyingBall(note, cue.Beat, cue.CueId);
             }
+        }
+
+        /// <summary>
+        /// 앞 미니게임에서 넘어온 노트를 투수가 던진 공으로 이어받는다. 예고가 시작된 박부터 날아온 만큼 진행된 자리에 바로 보이고,
+        /// 노트 박에 타격 지점에 닿는다. 예고 간격이 2박 가까이면 높이 뜬 공(lob), 홀드는 잡고 버티는 공(charge)이다.
+        /// </summary>
+        protected override void OnCarryNote(CarriedNote carried)
+        {
+            var note = carried.Note;
+            bool hold = note.Type == NoteType.Hold;
+            string look = hold ? HitBackCues.Charge : carried.LeadBeats >= 1.5 ? HitBackCues.Lob : HitBackCues.Throw;
+            var ball = SpawnFlyingBall(note, carried.LaunchBeat, look);
+            if (!hold) return;
+
+            ringDriver.Begin(note, carried.Holding);
+            if (!carried.Holding) return;
+            // 이미 누르고 있는 홀드는 공을 잡고 버티는 자세로 시작한다.
+            double now = Context.Conductor.SongTime;
+            holding = true;
+            ball.State = BallState.Held;
+            ball.StateTime = now;
+            ball.Sprite.gameObject.SetActive(true);
+            otamaton.Press(now);
+        }
+
+        /// <summary>
+        /// <paramref name="launchBeat"/>에 투수 손을 떠나 노트 박에 타격 지점에 닿는 공. 모양은 <paramref name="look"/>(throw·lob·charge)를 따른다.
+        /// </summary>
+        Ball SpawnFlyingBall(TimelineNote note, double launchBeat, string look)
+        {
+            float flightBeats = (float)(note.Beat - launchBeat);
+            var ball = new Ball
+            {
+                Sprite = RentBall(),
+                LaunchBeat = launchBeat,
+                Note = note,
+                State = BallState.Waiting,
+                Size = look == HitBackCues.Lob ? 0.75f : look == HitBackCues.Charge ? 0.95f : 0.5f,
+                ArcHeight = 1.4f * flightBeats + (look == HitBackCues.Lob ? 1f : 0f),
+            };
+            ball.Sprite.color = ColorFor(look);
+            ball.Sprite.transform.localScale = Vector3.one * ball.Size;
+            ball.Sprite.transform.position = releasePoint.position;
+            ball.Sprite.gameObject.SetActive(false);
+            balls.Add(ball);
+            ballByNote[note.Id] = ball;
+            return ball;
         }
 
         /// <summary>종이 울릴 때 나타나 선반에 줄서는 공. 선반 위 위치가 곧 응답 리듬이다.</summary>
@@ -146,7 +196,7 @@ namespace IWannabe.Stages.HitBack
             var ball = new Ball
             {
                 Sprite = RentBall(),
-                Cue = cue,
+                LaunchBeat = cue.Beat,
                 Note = note,
                 State = BallState.Waiting,
                 Echo = true,
@@ -275,7 +325,7 @@ namespace IWannabe.Stages.HitBack
                 switch (ball.State)
                 {
                     case BallState.Waiting:
-                        if (songBeat < ball.Cue.Beat) break;
+                        if (songBeat < ball.LaunchBeat) break;
                         ball.Sprite.gameObject.SetActive(true);
                         if (ball.Echo)
                         {
@@ -286,14 +336,14 @@ namespace IWannabe.Stages.HitBack
                         goto case BallState.Flying;
 
                     case BallState.Shelved:
-                        t.position = EchoShelf.Position(BellPoint, ball.Slot, hitPoint.position, songBeat, ball.Cue.Beat, ball.Note.Beat);
+                        t.position = EchoShelf.Position(BellPoint, ball.Slot, hitPoint.position, songBeat, ball.LaunchBeat, ball.Note.Beat);
                         if (songBeat - ball.Note.Beat > 2.0) Despawn(i);
                         break;
 
                     case BallState.Flying:
                     {
-                        double span = Math.Max(1e-3, ball.Note.Beat - ball.Cue.Beat);
-                        float u = (float)((songBeat - ball.Cue.Beat) / span);
+                        double span = Math.Max(1e-3, ball.Note.Beat - ball.LaunchBeat);
+                        float u = (float)((songBeat - ball.LaunchBeat) / span);
                         t.position = Arc(releasePoint.position, hitPoint.position, ball.ArcHeight, u);
                         t.rotation = Quaternion.Euler(0f, 0f, -360f * u);
                         if (u > 3f) Despawn(i);

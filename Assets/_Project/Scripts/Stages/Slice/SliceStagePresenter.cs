@@ -19,7 +19,8 @@ namespace IWannabe.Stages.Slice
         sealed class Item
         {
             public SpriteRenderer Sprite;
-            public TimelineCue Cue;
+            /// <summary>물건이 나타나 움직이기 시작하는 박(예고 큐의 박).</summary>
+            public double LaunchBeat;
             public TimelineNote Note;
             public double ArrivalBeat;
             public ItemState State;
@@ -128,6 +129,30 @@ namespace IWannabe.Stages.Slice
             ringDriver = new HoldRingDriver(holdRing, gongColor, barelyColor, Color.gray);
         }
 
+        /// <summary>앞 구간에서 남은 물건·조각·칼자국·홀드 표시를 치우고 스승·검객·징을 쉬는 자세로 돌린다.</summary>
+        protected override void OnSegmentEnter(TimelineSegment segment)
+        {
+            for (int i = items.Count - 1; i >= 0; i--) Despawn(i);
+            itemByNote.Clear();
+            foreach (var fx in effects)
+            {
+                fx.Sprite.gameObject.SetActive(false);
+                effectPool.Push(fx.Sprite);
+            }
+            effects.Clear();
+
+            swingStart = double.NegativeInfinity;
+            masterToss = double.NegativeInfinity;
+            gongHit = double.NegativeInfinity;
+            chopping = false;
+            master.localScale = masterScale;
+            swordsman.localScale = swordsmanScale;
+            gong.localScale = gongScale;
+            SetSword(swordRestAngle);
+            ringDriver.Reset();
+            otamaton.Rest();
+        }
+
         public override void OnPatternSpawn(TimelinePattern pattern)
         {
             foreach (var cue in pattern.Cues)
@@ -135,36 +160,64 @@ namespace IWannabe.Stages.Slice
                 if (cue.TargetNoteId < 0) continue;
 
                 var note = Context.Timeline.Notes[cue.TargetNoteId];
-                if (cue.CueId == SliceCues.Gong)
-                {
-                    SpawnEchoLantern(pattern, cue, note);
-                    continue;
-                }
-
-                bool draw = cue.CueId == SliceCues.Draw;
-                bool high = cue.CueId == SliceCues.High;
-                // 모든 물건은 누르는 박에 베는 지점(링 중심)에 도착한다. 통나무는 그 자리에 멈춰 난도질당한다.
-                float flight = (float)(note.Beat - cue.Beat);
-
-                var item = new Item
-                {
-                    Sprite = RentItem(),
-                    Cue = cue,
-                    Note = note,
-                    ArrivalBeat = note.Beat,
-                    State = ItemState.Waiting,
-                    Scale = draw ? new Vector3(1.1f, 0.45f, 1f) : high ? new Vector3(0.32f, 1.3f, 1f) : new Vector3(0.6f, 0.6f, 1f),
-                    ArcHeight = draw ? 1.6f * flight : high ? 1.4f * flight + 1.5f : 1.5f * flight,
-                    SpinPerBeat = draw ? 90f : high ? -260f : -180f,
-                };
-                item.Sprite.sprite = draw || high ? stickSprite : roundSprite;
-                item.Sprite.color = draw ? logColor : high ? bambooColor : fruitColor;
-                item.Sprite.transform.localScale = item.Scale;
-                item.Sprite.transform.position = releasePoint.position;
-                item.Sprite.gameObject.SetActive(false);
-                items.Add(item);
-                itemByNote[note.Id] = item;
+                if (cue.CueId == SliceCues.Gong) SpawnEchoLantern(pattern, cue, note);
+                else SpawnThrownItem(note, cue.Beat, cue.CueId);
             }
+        }
+
+        /// <summary>
+        /// 앞 미니게임에서 넘어온 노트를 스승이 던진 물건으로 이어받는다. 예고가 시작된 박부터 날아온 만큼 진행된 자리에 바로 보이고,
+        /// 노트 박에 베는 지점에 닿는다. 예고 간격이 2박 가까이면 대나무(high), 홀드는 통나무(draw)다.
+        /// </summary>
+        protected override void OnCarryNote(CarriedNote carried)
+        {
+            var note = carried.Note;
+            bool hold = note.Type == NoteType.Hold;
+            string look = hold ? SliceCues.Draw : carried.LeadBeats >= 1.5 ? SliceCues.High : SliceCues.Toss;
+            var item = SpawnThrownItem(note, carried.LaunchBeat, look);
+            if (!hold) return;
+
+            ringDriver.Begin(note, carried.Holding);
+            if (!carried.Holding) return;
+            // 이미 누르고 있는 홀드는 통나무를 링 안에 붙잡고 난도질하는 중으로 시작한다.
+            double now = Context.Conductor.SongTime;
+            chopping = true;
+            nextFlurryTime = now;
+            item.State = ItemState.Held;
+            item.StateTime = now;
+            item.Sprite.gameObject.SetActive(true);
+            otamaton.Press(now);
+        }
+
+        /// <summary>
+        /// <paramref name="launchBeat"/>에 스승 손을 떠나 노트 박에 베는 지점(링 중심)에 닿는 물건. 모양은 <paramref name="look"/>(toss·high·draw)를 따른다.
+        /// 통나무(draw)는 그 자리에 멈춰 난도질당한다.
+        /// </summary>
+        Item SpawnThrownItem(TimelineNote note, double launchBeat, string look)
+        {
+            bool draw = look == SliceCues.Draw;
+            bool high = look == SliceCues.High;
+            float flight = (float)(note.Beat - launchBeat);
+
+            var item = new Item
+            {
+                Sprite = RentItem(),
+                LaunchBeat = launchBeat,
+                Note = note,
+                ArrivalBeat = note.Beat,
+                State = ItemState.Waiting,
+                Scale = draw ? new Vector3(1.1f, 0.45f, 1f) : high ? new Vector3(0.32f, 1.3f, 1f) : new Vector3(0.6f, 0.6f, 1f),
+                ArcHeight = draw ? 1.6f * flight : high ? 1.4f * flight + 1.5f : 1.5f * flight,
+                SpinPerBeat = draw ? 90f : high ? -260f : -180f,
+            };
+            item.Sprite.sprite = draw || high ? stickSprite : roundSprite;
+            item.Sprite.color = draw ? logColor : high ? bambooColor : fruitColor;
+            item.Sprite.transform.localScale = item.Scale;
+            item.Sprite.transform.position = releasePoint.position;
+            item.Sprite.gameObject.SetActive(false);
+            items.Add(item);
+            itemByNote[note.Id] = item;
+            return item;
         }
 
         /// <summary>징이 울릴 때 나타나 선반에 줄서는 등롱. 선반 위 위치가 곧 응답 리듬이다.</summary>
@@ -173,7 +226,7 @@ namespace IWannabe.Stages.Slice
             var item = new Item
             {
                 Sprite = RentItem(),
-                Cue = cue,
+                LaunchBeat = cue.Beat,
                 Note = note,
                 ArrivalBeat = note.Beat,
                 State = ItemState.Waiting,
@@ -333,7 +386,7 @@ namespace IWannabe.Stages.Slice
                 switch (item.State)
                 {
                     case ItemState.Waiting:
-                        if (songBeat < item.Cue.Beat) break;
+                        if (songBeat < item.LaunchBeat) break;
                         item.Sprite.gameObject.SetActive(true);
                         if (item.Echo)
                         {
@@ -344,19 +397,19 @@ namespace IWannabe.Stages.Slice
                         goto case ItemState.Flying;
 
                     case ItemState.Shelved:
-                        t.position = EchoShelf.Position(gong.position, item.Slot, strikePoint.position, songBeat, item.Cue.Beat, item.Note.Beat);
+                        t.position = EchoShelf.Position(gong.position, item.Slot, strikePoint.position, songBeat, item.LaunchBeat, item.Note.Beat);
                         t.rotation = Quaternion.Euler(0f, 0f, 6f * Mathf.Sin((float)(songBeat * Math.PI)));
                         if (songBeat - item.Note.Beat > 2.0) Despawn(i);
                         break;
 
                     case ItemState.Flying:
                     {
-                        double span = Math.Max(1e-3, item.ArrivalBeat - item.Cue.Beat);
-                        float u = (float)((songBeat - item.Cue.Beat) / span);
+                        double span = Math.Max(1e-3, item.ArrivalBeat - item.LaunchBeat);
+                        float u = (float)((songBeat - item.LaunchBeat) / span);
                         var p = Vector3.LerpUnclamped(releasePoint.position, strikePoint.position, u);
                         p.y += item.ArcHeight * 4f * u * (1f - u);
                         t.position = p;
-                        t.rotation = Quaternion.Euler(0f, 0f, item.SpinPerBeat * (float)(songBeat - item.Cue.Beat));
+                        t.rotation = Quaternion.Euler(0f, 0f, item.SpinPerBeat * (float)(songBeat - item.LaunchBeat));
                         if (u > 3f) Despawn(i);
                         break;
                     }

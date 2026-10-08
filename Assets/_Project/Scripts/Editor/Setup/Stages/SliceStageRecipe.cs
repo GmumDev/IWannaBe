@@ -11,7 +11,7 @@ namespace IWannabe.EditorTools
     /// 스테이지 2 "베기": 132 BPM 태고·고토·피리, 밤 배경. 스승이 던진 물건을 검객이 벤다.
     /// 받아치기보다 한 단계 어렵게(난이도 4) 생성하고, 8분음표 4연타(volley)가 추가된다.
     /// </summary>
-    sealed class SliceStageRecipe : StageRecipe
+    sealed class SliceStageRecipe : MinigameStageRecipe
     {
         public override string StageId => "slice";
         public override string DisplayName => "베기";

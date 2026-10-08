@@ -6,6 +6,7 @@
 | [02_BM.md](02_BM.md) | 수익 모델 원칙, 플랫폼별 상품 구성, 출시 후 수익 계획 |
 | [03_LaunchPlan.md](03_LaunchPlan.md) | 출시 범위, 동시 출시 준비, 작업 순서, 기술 요구 사항 |
 | [04_DevRoadmap.md](04_DevRoadmap.md) | 개발 단계, 진행 상태, 미결 사항, 작업 기록 |
+| [05_MinigameRules.md](05_MinigameRules.md) | 미니게임 연출 규칙: 구간 들어오기·나가기, cueId 구분, 채보 생성, 연습, 시각 큐 기준 |
 
 ## 확정 사항
 

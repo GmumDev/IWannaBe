@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2622215ad1ad69b469c88d05ed3ce498, type: 3}
+  m_Name: Slice_Minigame
+  m_EditorClassIdentifier: IWannabe.Rhythm::IWannabe.Rhythm.MinigameDefinition
+  minigameId: slice
+  displayName: "\uBCA0\uAE30"
+  presenterPrefab: {fileID: 4691262943500754104, guid: e5818fe742396fb4d937d9a34b8efe5e, type: 3}
+  cueSounds:
+  - cueId: toss
+    clip: {fileID: 8300000, guid: c9bd59e1c86358a4dbebc917c244b9db, type: 3}
+    volume: 0.9
+  - cueId: high
+    clip: {fileID: 8300000, guid: 0676375a8a7e7e84c873c2cab975bba6, type: 3}
+    volume: 0.85
+  - cueId: draw
+    clip: {fileID: 8300000, guid: a8756f891e990d841bcd9105ac368d65, type: 3}
+    volume: 0.8
+  - cueId: tick
+    clip: {fileID: 8300000, guid: 1fcb02e644e0f394abcdc72bc05278aa, type: 3}
+    volume: 0.8
+  - cueId: gong
+    clip: {fileID: 8300000, guid: dc7b488c3a6a4144490c54a8b39b6261, type: 3}
+    volume: 0.8
+  backgroundColor: {r: 0.16862746, g: 0.1764706, b: 0.25882354, a: 1}
+  hudInkColor: {r: 0.92941177, g: 0.9490196, b: 0.95686275, a: 1}
+  cameraSize: 5
+  minVisibleHalfWidth: 7.5

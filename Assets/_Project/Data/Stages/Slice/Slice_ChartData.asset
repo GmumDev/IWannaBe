@@ -15,6 +15,7 @@ MonoBehaviour:
   patterns:
   - patternId: toss
     anchorBeat: 12
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -25,6 +26,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: pair
     anchorBeat: 14
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -41,6 +43,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: toss
     anchorBeat: 16
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -51,6 +54,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: high
     anchorBeat: 18
+    segment: 0
     cues:
     - offset: -2
       cueId: high
@@ -61,6 +65,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: echo
     anchorBeat: 24
+    segment: 0
     cues:
     - offset: -4
       cueId: gong
@@ -83,6 +88,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: toss
     anchorBeat: 28
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -93,6 +99,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: pair
     anchorBeat: 30
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -109,6 +116,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: toss
     anchorBeat: 32
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -119,6 +127,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: high
     anchorBeat: 34
+    segment: 0
     cues:
     - offset: -2
       cueId: high
@@ -129,6 +138,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: high
     anchorBeat: 36
+    segment: 0
     cues:
     - offset: -2
       cueId: high
@@ -139,6 +149,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: echo
     anchorBeat: 40
+    segment: 0
     cues:
     - offset: -4
       cueId: gong
@@ -161,6 +172,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: toss
     anchorBeat: 44
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -171,6 +183,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: pair
     anchorBeat: 46
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -187,6 +200,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: toss
     anchorBeat: 48
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -197,6 +211,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: volley
     anchorBeat: 50
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -225,6 +240,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: echo
     anchorBeat: 56
+    segment: 0
     cues:
     - offset: -4
       cueId: gong
@@ -253,6 +269,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: toss
     anchorBeat: 60
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -263,6 +280,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: draw
     anchorBeat: 68
+    segment: 0
     cues:
     - offset: -1
       cueId: draw
@@ -276,6 +294,7 @@ MonoBehaviour:
       holdBeats: 2
   - patternId: toss
     anchorBeat: 72
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -286,6 +305,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: volley
     anchorBeat: 73
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -314,6 +334,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: toss
     anchorBeat: 76
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -324,6 +345,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: pair
     anchorBeat: 78
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -340,6 +362,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: draw
     anchorBeat: 80
+    segment: 0
     cues:
     - offset: -1
       cueId: draw
@@ -353,6 +376,7 @@ MonoBehaviour:
       holdBeats: 2
   - patternId: high
     anchorBeat: 84
+    segment: 0
     cues:
     - offset: -2
       cueId: high
@@ -363,6 +387,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: echo
     anchorBeat: 96
+    segment: 0
     cues:
     - offset: -4
       cueId: gong
@@ -391,6 +416,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: toss
     anchorBeat: 100
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -401,6 +427,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: volley
     anchorBeat: 102
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -429,6 +456,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: draw
     anchorBeat: 105
+    segment: 0
     cues:
     - offset: -1
       cueId: draw
@@ -442,6 +470,7 @@ MonoBehaviour:
       holdBeats: 2
   - patternId: toss
     anchorBeat: 108
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -452,6 +481,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: echo
     anchorBeat: 112
+    segment: 0
     cues:
     - offset: -4
       cueId: gong
@@ -480,6 +510,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: toss
     anchorBeat: 116
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -490,6 +521,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: volley
     anchorBeat: 118
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -518,6 +550,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: pair
     anchorBeat: 122
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -534,6 +567,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: toss
     anchorBeat: 124
+    segment: 0
     cues:
     - offset: -1
       cueId: toss
@@ -544,6 +578,7 @@ MonoBehaviour:
       holdBeats: 0
   - patternId: draw
     anchorBeat: 128
+    segment: 0
     cues:
     - offset: -1
       cueId: draw
@@ -557,6 +592,7 @@ MonoBehaviour:
       holdBeats: 2
   - patternId: high
     anchorBeat: 132
+    segment: 0
     cues:
     - offset: -2
       cueId: high
@@ -565,6 +601,7 @@ MonoBehaviour:
     - offset: 0
       type: 0
       holdBeats: 0
-  generationInfo: "\uC2DC\uB4DC 20261008, \uB09C\uC774\uB3C4 4, 2026-10-07 13:33\n\uAD6C\uC808
+  segments: []
+  generationInfo: "\uC2DC\uB4DC 20261008, \uB09C\uC774\uB3C4 4, 2026-10-08 13:22\n\uAD6C\uC808
     13/18 \uD65C\uC131, \uD328\uD134 36\uAC1C, \uB178\uD2B8 66\uAC1C (draw 4, echo
     5, high 5, pair 5, toss 13, volley 4)"

@@ -16,7 +16,7 @@ namespace IWannabe.Rhythm.EditorTools
             EditorGUILayout.LabelField("채보 파이프라인", EditorStyles.boldLabel);
 
             bool canAnalyze = profile.song != null && profile.song.Clip != null && profile.analysis != null;
-            bool canGenerate = profile.analysis != null && profile.analysis.HasData && profile.patterns != null && profile.output != null;
+            bool canGenerate = profile.analysis != null && profile.analysis.HasData && profile.HasPatterns && profile.output != null;
 
             using (new EditorGUI.DisabledScope(!canAnalyze))
             {
@@ -28,7 +28,7 @@ namespace IWannabe.Rhythm.EditorTools
                 if (GUILayout.Button("2. 채보 생성"))
                     Run(() => ChartPipeline.Generate(profile));
             }
-            using (new EditorGUI.DisabledScope(!canAnalyze || profile.patterns == null || profile.output == null))
+            using (new EditorGUI.DisabledScope(!canAnalyze || !profile.HasPatterns || profile.output == null))
             {
                 if (GUILayout.Button("분석 + 생성 한 번에"))
                     Run(() =>

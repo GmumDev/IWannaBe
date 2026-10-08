@@ -1,0 +1,611 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4117efa49b6ee2c4dad6a5afc2caf9f7, type: 3}
+  m_Name: Remix1_ChartData
+  m_EditorClassIdentifier: IWannabe.Rhythm::IWannabe.Rhythm.ChartData
+  patterns:
+  - patternId: throw
+    anchorBeat: 4
+    segment: 0
+    cues:
+    - offset: -1
+      cueId: throw
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: lob
+    anchorBeat: 8
+    segment: 0
+    cues:
+    - offset: -2
+      cueId: lob
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: throw
+    anchorBeat: 10
+    segment: 0
+    cues:
+    - offset: -1
+      cueId: throw
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: lob
+    anchorBeat: 12
+    segment: 0
+    cues:
+    - offset: -2
+      cueId: lob
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: charge
+    anchorBeat: 16
+    segment: 0
+    cues:
+    - offset: -1
+      cueId: charge
+      targetNote: 0
+    - offset: 1
+      cueId: tick
+      targetNote: -1
+    notes:
+    - offset: 0
+      type: 1
+      holdBeats: 2
+  - patternId: throw
+    anchorBeat: 20
+    segment: 0
+    cues:
+    - offset: -1
+      cueId: throw
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: echo
+    anchorBeat: 24
+    segment: 0
+    cues:
+    - offset: -3
+      cueId: bell
+      targetNote: 0
+    - offset: -2
+      cueId: bell
+      targetNote: 1
+    - offset: -1
+      cueId: bell
+      targetNote: 2
+    notes:
+    - offset: 1
+      type: 0
+      holdBeats: 0
+    - offset: 2
+      type: 0
+      holdBeats: 0
+    - offset: 3
+      type: 0
+      holdBeats: 0
+  - patternId: throw
+    anchorBeat: 28
+    segment: 0
+    cues:
+    - offset: -1
+      cueId: throw
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: double
+    anchorBeat: 32
+    segment: 0
+    cues:
+    - offset: -1
+      cueId: throw
+      targetNote: 0
+    - offset: -0.5
+      cueId: throw
+      targetNote: 1
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+    - offset: 0.5
+      type: 0
+      holdBeats: 0
+  - patternId: toss
+    anchorBeat: 35
+    segment: 1
+    cues:
+    - offset: -1
+      cueId: toss
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: toss
+    anchorBeat: 36
+    segment: 1
+    cues:
+    - offset: -1
+      cueId: toss
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: pair
+    anchorBeat: 44
+    segment: 1
+    cues:
+    - offset: -1
+      cueId: toss
+      targetNote: 0
+    - offset: -0.5
+      cueId: toss
+      targetNote: 1
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+    - offset: 0.5
+      type: 0
+      holdBeats: 0
+  - patternId: toss
+    anchorBeat: 48
+    segment: 1
+    cues:
+    - offset: -1
+      cueId: toss
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: draw
+    anchorBeat: 49
+    segment: 1
+    cues:
+    - offset: -1
+      cueId: draw
+      targetNote: 0
+    - offset: 1
+      cueId: tick
+      targetNote: -1
+    notes:
+    - offset: 0
+      type: 1
+      holdBeats: 2
+  - patternId: toss
+    anchorBeat: 52
+    segment: 1
+    cues:
+    - offset: -1
+      cueId: toss
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: echo
+    anchorBeat: 56
+    segment: 1
+    cues:
+    - offset: -4
+      cueId: gong
+      targetNote: 0
+    - offset: -3
+      cueId: gong
+      targetNote: 1
+    - offset: -2
+      cueId: gong
+      targetNote: 2
+    - offset: -1
+      cueId: gong
+      targetNote: 3
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+    - offset: 1
+      type: 0
+      holdBeats: 0
+    - offset: 2
+      type: 0
+      holdBeats: 0
+    - offset: 3
+      type: 0
+      holdBeats: 0
+  - patternId: toss
+    anchorBeat: 60
+    segment: 1
+    cues:
+    - offset: -1
+      cueId: toss
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: high
+    anchorBeat: 65
+    segment: 1
+    cues:
+    - offset: -2
+      cueId: high
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: throw
+    anchorBeat: 67
+    segment: 2
+    cues:
+    - offset: -1
+      cueId: throw
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: throw
+    anchorBeat: 68
+    segment: 2
+    cues:
+    - offset: -1
+      cueId: throw
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: echo
+    anchorBeat: 72
+    segment: 2
+    cues:
+    - offset: -3
+      cueId: bell
+      targetNote: 0
+    - offset: -2
+      cueId: bell
+      targetNote: 1
+    - offset: -1
+      cueId: bell
+      targetNote: 2
+    - offset: -0.5
+      cueId: bell
+      targetNote: 3
+    notes:
+    - offset: 1
+      type: 0
+      holdBeats: 0
+    - offset: 2
+      type: 0
+      holdBeats: 0
+    - offset: 3
+      type: 0
+      holdBeats: 0
+    - offset: 3.5
+      type: 0
+      holdBeats: 0
+  - patternId: charge
+    anchorBeat: 77
+    segment: 2
+    cues:
+    - offset: -1
+      cueId: charge
+      targetNote: 0
+    - offset: 1
+      cueId: tick
+      targetNote: -1
+    notes:
+    - offset: 0
+      type: 1
+      holdBeats: 2
+  - patternId: throw
+    anchorBeat: 80
+    segment: 2
+    cues:
+    - offset: -1
+      cueId: throw
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: lob
+    anchorBeat: 84
+    segment: 2
+    cues:
+    - offset: -2
+      cueId: lob
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: throw
+    anchorBeat: 96
+    segment: 2
+    cues:
+    - offset: -1
+      cueId: throw
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: draw
+    anchorBeat: 98
+    segment: 3
+    cues:
+    - offset: -1
+      cueId: draw
+      targetNote: 0
+    - offset: 1
+      cueId: tick
+      targetNote: -1
+    notes:
+    - offset: 0
+      type: 1
+      holdBeats: 2
+  - patternId: echo
+    anchorBeat: 104
+    segment: 3
+    cues:
+    - offset: -4
+      cueId: gong
+      targetNote: 0
+    - offset: -3
+      cueId: gong
+      targetNote: 1
+    - offset: -2
+      cueId: gong
+      targetNote: 2
+    - offset: -1
+      cueId: gong
+      targetNote: 3
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+    - offset: 1
+      type: 0
+      holdBeats: 0
+    - offset: 2
+      type: 0
+      holdBeats: 0
+    - offset: 3
+      type: 0
+      holdBeats: 0
+  - patternId: toss
+    anchorBeat: 108
+    segment: 3
+    cues:
+    - offset: -1
+      cueId: toss
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: pair
+    anchorBeat: 109
+    segment: 3
+    cues:
+    - offset: -1
+      cueId: toss
+      targetNote: 0
+    - offset: -0.5
+      cueId: toss
+      targetNote: 1
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+    - offset: 0.5
+      type: 0
+      holdBeats: 0
+  - patternId: high
+    anchorBeat: 113
+    segment: 3
+    cues:
+    - offset: -2
+      cueId: high
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: throw
+    anchorBeat: 115
+    segment: 4
+    cues:
+    - offset: -1
+      cueId: throw
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: throw
+    anchorBeat: 116
+    segment: 4
+    cues:
+    - offset: -1
+      cueId: throw
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: echo
+    anchorBeat: 120
+    segment: 4
+    cues:
+    - offset: -3
+      cueId: bell
+      targetNote: 0
+    - offset: -2
+      cueId: bell
+      targetNote: 1
+    - offset: -1
+      cueId: bell
+      targetNote: 2
+    - offset: -0.5
+      cueId: bell
+      targetNote: 3
+    notes:
+    - offset: 1
+      type: 0
+      holdBeats: 0
+    - offset: 2
+      type: 0
+      holdBeats: 0
+    - offset: 3
+      type: 0
+      holdBeats: 0
+    - offset: 3.5
+      type: 0
+      holdBeats: 0
+  - patternId: charge
+    anchorBeat: 125
+    segment: 4
+    cues:
+    - offset: -1
+      cueId: charge
+      targetNote: 0
+    - offset: 1
+      cueId: tick
+      targetNote: -1
+    notes:
+    - offset: 0
+      type: 1
+      holdBeats: 2
+  - patternId: double
+    anchorBeat: 128
+    segment: 4
+    cues:
+    - offset: -1
+      cueId: throw
+      targetNote: 0
+    - offset: -0.5
+      cueId: throw
+      targetNote: 1
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+    - offset: 0.5
+      type: 0
+      holdBeats: 0
+  - patternId: toss
+    anchorBeat: 130
+    segment: 5
+    cues:
+    - offset: -1
+      cueId: toss
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  - patternId: pair
+    anchorBeat: 131
+    segment: 5
+    cues:
+    - offset: -1
+      cueId: toss
+      targetNote: 0
+    - offset: -0.5
+      cueId: toss
+      targetNote: 1
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+    - offset: 0.5
+      type: 0
+      holdBeats: 0
+  - patternId: draw
+    anchorBeat: 140
+    segment: 5
+    cues:
+    - offset: -1
+      cueId: draw
+      targetNote: 0
+    - offset: 1
+      cueId: tick
+      targetNote: -1
+    notes:
+    - offset: 0
+      type: 1
+      holdBeats: 2
+  - patternId: high
+    anchorBeat: 144
+    segment: 5
+    cues:
+    - offset: -2
+      cueId: high
+      targetNote: 0
+    notes:
+    - offset: 0
+      type: 0
+      holdBeats: 0
+  segments:
+  - minigameId: hitback
+    startBeat: 0
+  - minigameId: slice
+    startBeat: 32
+  - minigameId: hitback
+    startBeat: 64
+  - minigameId: slice
+    startBeat: 96
+  - minigameId: hitback
+    startBeat: 112
+  - minigameId: slice
+    startBeat: 128
+  generationInfo: "\uC2DC\uB4DC 20261009, \uB09C\uC774\uB3C4 3, 2026-10-08 13:22\n\uAD6C\uC808
+    15/18 \uD65C\uC131, \uD328\uD134 39\uAC1C, \uB178\uD2B8 58\uAC1C (hitback/charge
+    3, hitback/double 2, hitback/echo 3, hitback/lob 3, hitback/throw 10, slice/draw
+    3, slice/echo 2, slice/high 3, slice/pair 3, slice/toss 7)\n1. \uBC1B\uC544\uCE58\uAE30
+    0~8\uB9C8\uB514: \uD328\uD134 9\uAC1C, \uB178\uD2B8 12\uAC1C, \uB2E4\uC74C \uBBF8\uB2C8\uAC8C\uC784\uC774
+    \uC774\uC5B4\uBC1B\uB294 \uD328\uD134 1\uAC1C\n2. \uBCA0\uAE30 8~16\uB9C8\uB514:
+    \uD328\uD134 9\uAC1C, \uB178\uD2B8 13\uAC1C, \uC804\uD658 32.25\uBC15(\uC785\uB825\uACFC
+    \uACB9\uCCD0 +0.25\uBC15 \uC62E\uAE40)\xB7\uAC00\uC7A5 \uAC00\uAE4C\uC6B4 \uC785\uB825\uACFC
+    120ms, \uB2E4\uC74C \uBBF8\uB2C8\uAC8C\uC784\uC774 \uC774\uC5B4\uBC1B\uB294 \uD328\uD134
+    1\uAC1C\n3. \uBC1B\uC544\uCE58\uAE30 16~24\uB9C8\uB514: \uD328\uD134 7\uAC1C,
+    \uB178\uD2B8 10\uAC1C, \uC804\uD658 64\uBC15\xB7\uAC00\uC7A5 \uAC00\uAE4C\uC6B4
+    \uC785\uB825\uACFC 484ms\n4. \uBCA0\uAE30 24~28\uB9C8\uB514: \uD328\uD134 5\uAC1C,
+    \uB178\uD2B8 9\uAC1C, \uC804\uD658 96.25\uBC15(\uC785\uB825\uACFC \uACB9\uCCD0
+    +0.25\uBC15 \uC62E\uAE40)\xB7\uAC00\uC7A5 \uAC00\uAE4C\uC6B4 \uC785\uB825\uACFC
+    120ms, \uB2E4\uC74C \uBBF8\uB2C8\uAC8C\uC784\uC774 \uC774\uC5B4\uBC1B\uB294 \uD328\uD134
+    1\uAC1C\n5. \uBC1B\uC544\uCE58\uAE30 28~32\uB9C8\uB514: \uD328\uD134 5\uAC1C,
+    \uB178\uD2B8 9\uAC1C, \uC804\uD658 112\uBC15\xB7\uAC00\uC7A5 \uAC00\uAE4C\uC6B4
+    \uC785\uB825\uACFC 484ms, \uB2E4\uC74C \uBBF8\uB2C8\uAC8C\uC784\uC774 \uC774\uC5B4\uBC1B\uB294
+    \uD328\uD134 1\uAC1C\n6. \uBCA0\uAE30 32~37\uB9C8\uB514: \uD328\uD134 4\uAC1C,
+    \uB178\uD2B8 5\uAC1C, \uC804\uD658 128.25\uBC15(\uC785\uB825\uACFC \uACB9\uCCD0
+    +0.25\uBC15 \uC62E\uAE40)\xB7\uAC00\uC7A5 \uAC00\uAE4C\uC6B4 \uC785\uB825\uACFC
+    120ms\n\uC774\uC5B4\uBC1B\uAE30 4\uD68C / \uAD6C\uAC04 \uACBD\uACC4 5\uACF3"

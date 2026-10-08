@@ -4,12 +4,13 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.Profiling;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace IWannabe.Rhythm
 {
     /// <summary>
-    /// 스테이지 콘텐츠(Addressables 그룹 하나)를 로드·언로드한다. 동시에 한 스테이지만 들고 있으며,
+    /// 스테이지 콘텐츠(스테이지 그룹과, 그 스테이지가 쓰는 미니게임·곡 그룹)를 로드·언로드한다. 동시에 한 스테이지만 들고 있으며,
     /// 다른 스테이지가 남아 있는 상태에서 로드를 요청하면 예외를 던진다.
     /// 언로드는 번들이 비동기로 내려가므로 실제로 사라질 때까지 기다린 뒤 끝난다.
     /// </summary>
@@ -60,9 +61,22 @@ namespace IWannabe.Rhythm
             foreach (var name in LoadedBundleNames())
                 if (!bundlesBefore.Contains(name)) stageBundles.Add(name);
 
-            await LoadAudioAsync(Current, progress, cancellationToken);
+            var clips = await LoadAudioAsync(Current, progress, cancellationToken);
             progress?.Report(1f);
-            Debug.Log($"[StageContentLoader] 로드: '{Current.DisplayName}' (이 스테이지 번들 {stageBundles.Count}개)");
+            Debug.Log($"[StageContentLoader] 로드: '{Current.DisplayName}' (이 스테이지 번들 {stageBundles.Count}개, " +
+                      $"미니게임 {Current.Minigames.Count}개, {MemoryReport(clips)})");
+        }
+
+        /// <summary>
+        /// 연출 여러 개를 함께 올리는 리믹스의 메모리 확인용 요약. 오디오는 클립별 런타임 크기의 합이고
+        /// 전체 할당은 이 시점의 엔진 전체 값이다(릴리스 빌드에서는 0으로 나온다).
+        /// </summary>
+        static string MemoryReport(List<AudioClip> clips)
+        {
+            const double Mb = 1024.0 * 1024.0;
+            long audio = 0;
+            foreach (var clip in clips) audio += Profiler.GetRuntimeMemorySizeLong(clip);
+            return $"오디오 {clips.Count}개 {audio / Mb:0.0}MB, 전체 할당 {Profiler.GetTotalAllocatedMemoryLong() / Mb:0}MB";
         }
 
         /// <summary>현재 스테이지를 해제하고, 그 번들과 에셋이 메모리에서 내려갈 때까지 기다린다.</summary>
@@ -105,15 +119,23 @@ namespace IWannabe.Rhythm
             handle = default;
         }
 
-        static async UniTask LoadAudioAsync(StageDefinition stage, IProgress<float> progress, CancellationToken cancellationToken)
+        /// <summary>곡과, 스테이지가 쓰는 모든 미니게임의 큐 효과음·연출용 오디오를 미리 디코딩해 둔다.</summary>
+        static async UniTask<List<AudioClip>> LoadAudioAsync(StageDefinition stage, IProgress<float> progress, CancellationToken cancellationToken)
         {
             var clips = new List<AudioClip>();
-            if (stage.Song != null && stage.Song.Clip != null) clips.Add(stage.Song.Clip);
-            foreach (var cue in stage.CueSounds)
-                if (cue?.clip != null) clips.Add(cue.clip);
-            if (stage.PresenterPrefab != null)
-                foreach (var clip in stage.PresenterPrefab.AudioClips)
-                    if (clip != null) clips.Add(clip);
+            void Add(AudioClip clip)
+            {
+                if (clip != null && !clips.Contains(clip)) clips.Add(clip);
+            }
+
+            if (stage.Song != null) Add(stage.Song.Clip);
+            foreach (var minigame in stage.Minigames)
+            {
+                if (minigame == null) continue;
+                foreach (var cue in minigame.CueSounds) Add(cue?.clip);
+                if (minigame.PresenterPrefab != null)
+                    foreach (var clip in minigame.PresenterPrefab.AudioClips) Add(clip);
+            }
 
             foreach (var clip in clips)
                 if (clip.loadState == AudioDataLoadState.Unloaded) clip.LoadAudioData();
@@ -123,9 +145,10 @@ namespace IWannabe.Rhythm
             {
                 int loaded = clips.FindAll(c => c.loadState != AudioDataLoadState.Loading).Count;
                 progress?.Report(AssetProgressShare + (1f - AssetProgressShare) * loaded / Math.Max(1, clips.Count));
-                if (loaded == clips.Count) return;
+                if (loaded == clips.Count) break;
                 await UniTask.Yield(cancellationToken);
             }
+            return clips;
         }
 
         bool AnyStageBundleLoaded()

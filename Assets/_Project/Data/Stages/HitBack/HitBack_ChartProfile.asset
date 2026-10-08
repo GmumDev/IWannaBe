@@ -15,6 +15,7 @@ MonoBehaviour:
   song: {fileID: 11400000, guid: bede04ff873321e4e9af25c836bbcb3d, type: 2}
   analysis: {fileID: 11400000, guid: 4a7cbdede66b69649a74ea413193fc3e, type: 2}
   patterns: {fileID: 11400000, guid: f391854f85dd53e4991e793076457c05, type: 2}
+  segments: []
   output: {fileID: 11400000, guid: 5db9f12200c678748b95181fc1d5a94f, type: 2}
   analyzer:
     fftSize: 2048
@@ -49,3 +50,5 @@ MonoBehaviour:
     maxActivePhrasesByLevel: 020000000400000006000000
     silenceThreshold: 0.04
     lookaheadBeats: 4
+    carryOverBonus: 0.25
+    carryOverMinBeats: 0.5

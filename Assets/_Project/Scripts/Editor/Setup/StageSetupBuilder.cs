@@ -16,11 +16,14 @@ using Object = UnityEngine.Object;
 namespace IWannabe.EditorTools
 {
     /// <summary>
-    /// 모든 스테이지와 공용 씬을 구성한다. 스테이지마다 레시피를 따라 곡 분석·채보 생성·연출 프리팹·
-    /// StageDefinition·Addressables 그룹(스테이지당 1개)을 맞추고, 진행 순서대로 카탈로그를 만든다.
-    /// 여러 번들이 함께 쓰는 에셋은 공용 그룹에 명시적으로 넣는다: 곡은 Music(곡마다 번들 하나),
+    /// 모든 스테이지와 공용 씬을 구성한다. 미니게임 스테이지는 레시피를 따라 곡 분석·채보 생성·연출 프리팹·
+    /// MinigameDefinition·StageDefinition을 맞추고, 리믹스는 앞에서 만든 미니게임으로 구간별 채보를 만든다.
+    /// 진행 순서대로 카탈로그를 만든다.
+    /// Addressables는 스테이지마다 그룹 하나(StageDefinition·곡 데이터·채보), 미니게임마다 그룹 하나(MinigameDefinition·
+    /// 연출 프리팹·효과음)로 나눠, 미니게임 스테이지와 리믹스가 미니게임 번들을 복사하지 않고 함께 쓴다.
+    /// 그 밖에 여러 번들이 함께 쓰는 에셋도 공용 그룹에 명시적으로 넣는다: 곡은 Music(곡마다 번들 하나),
     /// 도형은 Shared, 꾸미기 카탈로그·오타마톤 파츠는 Customization.
-    /// 이미 있는 콘텐츠(분석 결과, 채보, 패턴 라이브러리, 연출 프리팹, 꾸미기 항목)는 덮어쓰지 않는다.
+    /// 이미 있는 콘텐츠(분석 결과, 채보, 패턴 라이브러리, 연출 프리팹, 꾸미기 항목, 리믹스 구간 목록)는 덮어쓰지 않는다.
     /// AppRoot 프리팹과 Lobby/StagePlay 씬은 매번 다시 만든다.
     /// </summary>
     [InitializeOnLoad]
@@ -28,20 +31,37 @@ namespace IWannabe.EditorTools
     {
         // 이 파일이 있으면 다음 스크립트 컴파일 직후 한 번 자동 실행한다(Temp는 버전 관리 대상이 아님).
         // 내용에 RebuildPresentersToken이 있으면 연출 프리팹도 레시피대로 다시 만들고,
-        // CheckDuplicatesToken이 있으면 끝난 뒤 Addressables 중복 검사를 돌린다.
+        // RegenerateChartsToken이 있으면 모든 채보를 지금 생성기로 다시 만들고(분석은 그대로),
+        // CheckDuplicatesToken이 있으면 끝난 뒤 Addressables 중복 검사를, AutoPlayToken이 있으면 자동 플레이 점검을 돌린다.
         const string TriggerFile = "Temp/IWannabe.BuildStages";
         const string RebuildPresentersToken = "rebuild-presenters";
+        const string RegenerateChartsToken = "regenerate-charts";
         const string CheckDuplicatesToken = "check-duplicates";
+        const string AutoPlayToken = "autoplay";
 
-        /// <summary>진행 순서. 앞 스테이지를 클리어해야 다음 스테이지가 열린다.</summary>
-        static readonly StageRecipe[] Recipes = { new HitBackStageRecipe(), new SliceStageRecipe() };
+        sealed class BuiltMinigame
+        {
+            public MinigameDefinition Definition;
+            public PatternLibrary Patterns;
+        }
+
+        static readonly MinigameStageRecipe HitBack = new HitBackStageRecipe();
+        static readonly MinigameStageRecipe Slice = new SliceStageRecipe();
+
+        /// <summary>진행 순서. 앞 스테이지를 클리어해야 다음 스테이지가 열린다. 리믹스는 그 미니게임들보다 뒤에 둔다.</summary>
+        static readonly StageRecipe[] Recipes = { HitBack, Slice, new Remix1StageRecipe(HitBack, Slice) };
 
         static StageSetupBuilder()
         {
             if (!File.Exists(TriggerFile)) return;
             string tokens = File.ReadAllText(TriggerFile);
             File.Delete(TriggerFile);
-            EditorApplication.delayCall += () => Build(false, tokens.Contains(RebuildPresentersToken), tokens.Contains(CheckDuplicatesToken));
+            EditorApplication.delayCall += () =>
+            {
+                bool built = Build(false, tokens.Contains(RebuildPresentersToken), tokens.Contains(CheckDuplicatesToken),
+                    tokens.Contains(RegenerateChartsToken));
+                if (built && tokens.Contains(AutoPlayToken)) StageAutoPlayTest.Run(false);
+            };
         }
 
         [MenuItem("IWannabe/Setup/Build All Stages")]
@@ -50,21 +70,28 @@ namespace IWannabe.EditorTools
         [MenuItem("IWannabe/Setup/Rebuild Stage Presenter Prefabs")]
         static void RebuildPresentersFromMenu() => Build(true, true);
 
-        public static void Build(bool askFirst, bool rebuildPresenters = false, bool checkDuplicates = false)
+        [MenuItem("IWannabe/Setup/Regenerate All Charts")]
+        static void RegenerateChartsFromMenu() => Build(true, regenerateCharts: true);
+
+        /// <summary>구성을 끝까지 마쳤으면 true.</summary>
+        public static bool Build(bool askFirst, bool rebuildPresenters = false, bool checkDuplicates = false, bool regenerateCharts = false)
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)
             {
                 Debug.LogWarning("[StageSetup] 플레이 모드에서는 실행할 수 없습니다.");
-                return;
+                return false;
             }
             string message = rebuildPresenters
                 ? "모든 스테이지의 연출 프리팹을 레시피대로 다시 만듭니다. 프리팹을 손으로 고친 내용은 사라집니다.\n" +
                   "나머지(분석 결과·채보·패턴)는 그대로 두고, AppRoot와 Lobby/StagePlay 씬은 다시 만듭니다."
+                : regenerateCharts
+                ? "모든 스테이지의 채보를 지금 생성 프로필 설정으로 다시 만듭니다. 채보를 손으로 고친 내용은 사라집니다.\n" +
+                  "곡 분석 결과·패턴·연출 프리팹은 그대로 두고, AppRoot와 Lobby/StagePlay 씬은 다시 만듭니다."
                 : "모든 스테이지의 연결(에셋·Addressables·카탈로그)을 맞추고 AppRoot 프리팹과 Lobby/StagePlay 씬을 다시 만듭니다.\n" +
                   "기존 분석 결과·채보·패턴·연출 프리팹은 그대로 둡니다.";
             if (askFirst && !EditorUtility.DisplayDialog("스테이지 구성", message, "진행", "취소"))
-                return;
-            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+                return false;
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return false;
 
             try
             {
@@ -81,18 +108,29 @@ namespace IWannabe.EditorTools
 
                 var entries = new List<StageCatalogEntry>();
                 var summary = new StringBuilder();
+                var minigames = new Dictionary<MinigameStageRecipe, BuiltMinigame>();
                 for (int i = 0; i < Recipes.Length; i++)
                 {
                     var recipe = Recipes[i];
                     Progress($"스테이지 구성: {recipe.DisplayName}", 0.05f + 0.7f * i / Recipes.Length);
-                    var reference = BuildStage(recipe, kit, rebuildPresenters, out string report);
+                    string report;
+                    StageReference reference = recipe switch
+                    {
+                        MinigameStageRecipe minigame => BuildMinigameStage(minigame, kit, rebuildPresenters, regenerateCharts, minigames, out report),
+                        RemixStageRecipe remix => BuildRemixStage(remix, regenerateCharts, minigames, out report),
+                        _ => throw new InvalidOperationException($"알 수 없는 레시피 종류: {recipe.GetType().Name}"),
+                    };
                     entries.Add(new StageCatalogEntry { stageId = recipe.StageId, displayName = recipe.DisplayName, stage = reference });
                     summary.Append($"\n  {i + 1}. {recipe.DisplayName}: {report}");
                 }
 
                 Progress("공용 에셋 그룹·꾸미기 카탈로그", 0.76f);
                 RegisterSharedAssets();
-                string customizationGuid = CustomizationSetup.Build(Recipes);
+                // 꾸미기 기본 항목(스테이지 곡 BGM 등)은 자기 곡을 가진 미니게임 스테이지 기준으로 만든다.
+                var minigameStages = new List<StageRecipe>();
+                foreach (var recipe in Recipes)
+                    if (recipe is MinigameStageRecipe) minigameStages.Add(recipe);
+                string customizationGuid = CustomizationSetup.Build(minigameStages);
 
                 var catalog = LoadOrCreate<StageCatalog>(SetupPaths.Catalog);
                 catalog.SetStages(entries);
@@ -112,11 +150,13 @@ namespace IWannabe.EditorTools
 
                 Debug.Log($"[StageSetup] 스테이지 구성 완료{summary}\nLobby 씬에서 플레이 버튼을 누르세요.");
                 if (checkDuplicates) AddressablesSetup.CheckDuplicates();
+                return true;
             }
             catch (Exception e)
             {
                 Debug.LogError($"[StageSetup] 구성 실패: {e.Message}");
                 Debug.LogException(e);
+                return false;
             }
             finally
             {
@@ -126,71 +166,141 @@ namespace IWannabe.EditorTools
 
         // ───────────────────────── 스테이지 ─────────────────────────
 
-        static StageReference BuildStage(StageRecipe recipe, StagePrefabKit kit, bool rebuildPresenter, out string report)
+        /// <summary>미니게임(연출 프리팹·큐 효과음·패턴)과 그 미니게임 하나짜리 스테이지를 맞춘다.</summary>
+        static StageReference BuildMinigameStage(MinigameStageRecipe recipe, StagePrefabKit kit, bool rebuildPresenter, bool regenerateChart,
+            Dictionary<MinigameStageRecipe, BuiltMinigame> built, out string report)
         {
             EnsureFolder(recipe.DataFolder);
-            ConfigureAudio(recipe);
+            foreach (var file in Directory.GetFiles(recipe.SfxFolder, "*.wav"))
+                ConfigureClip(file.Replace('\\', '/'), AudioClipLoadType.DecompressOnLoad, AudioCompressionFormat.ADPCM, 1f, true);
 
-            var clip = LoadRequired<AudioClip>(recipe.MusicPath);
-            // 곡은 로비 BGM으로도 쓰이므로 스테이지 번들에 묶지 않고 곡마다 번들 하나로 둔다.
-            AddressablesSetup.Register(recipe.MusicPath,
-                AddressablesSetup.Group(AddressablesSetup.MusicGroup, BundledAssetGroupSchema.BundlePackingMode.PackSeparately),
-                $"Music/{recipe.AssetName}");
-            var song = LoadOrCreate<SongData>(recipe.AssetPath("SongData"));
-            if (song.Clip != clip)
-            {
-                song.SetClip(clip);
-                EditorUtility.SetDirty(song);
-            }
-
-            var analysis = LoadOrCreate<SongAnalysis>(recipe.AssetPath("SongAnalysis"));
+            var song = PrepareSong(recipe, out var clip);
             var library = LoadOrCreate<PatternLibrary>(recipe.AssetPath("PatternLibrary"));
             if (library.Patterns.Count == 0)
             {
                 library.SetPatterns(recipe.CreatePatterns());
                 EditorUtility.SetDirty(library);
             }
-            var chart = LoadOrCreate<ChartData>(recipe.AssetPath("ChartData"));
+            var chart = PrepareChart(recipe, song, clip, regenerateChart, (profile, _) =>
+            {
+                profile.patterns = library;
+                return false;
+            }, out _, out bool generated);
 
-            var profile = LoadOrCreate<ChartGenerationProfile>(recipe.AssetPath("ChartProfile"), out bool newProfile);
-            if (newProfile) profile.generator = recipe.CreateGeneratorSettings();
-            profile.song = song;
-            profile.analysis = analysis;
-            profile.patterns = library;
-            profile.output = chart;
-            EditorUtility.SetDirty(profile);
-            AssetDatabase.SaveAssets();
-
-            // 곡이 바뀌었거나 분석이 없을 때만 분석하고, 분석이 새로 되면 채보도 다시 만든다.
-            bool analyze = !analysis.HasData || analysis.SourceClip != clip || !song.HasBeatMap;
-            bool generate = analyze || chart.Patterns.Count == 0;
-            if (analyze) ChartPipeline.Analyze(profile);
-            if (generate) ChartPipeline.Generate(profile);
-
-            // 프리팹을 다시 만들면 컴포넌트 fileID가 바뀌므로 아래 StageDefinition.Setup에서 참조를 다시 건다.
+            // 프리팹을 다시 만들면 컴포넌트 fileID가 바뀌므로 아래 MinigameDefinition.Setup에서 참조를 다시 건다.
             var presenter = recipe.EnsurePresenterPrefab(kit, rebuildPresenter);
 
             var cues = new List<CueSound>();
             foreach (var (cueId, sfx, volume) in recipe.CueSounds)
                 cues.Add(new CueSound { cueId = cueId, clip = recipe.LoadSfx(sfx), volume = volume });
 
+            var minigame = LoadOrCreate<MinigameDefinition>(recipe.AssetPath("Minigame"));
+            minigame.Setup(recipe.MinigameId, recipe.DisplayName, presenter, cues, recipe.Background, recipe.HudInk);
+            EditorUtility.SetDirty(minigame);
+            AssetDatabase.SaveAssets();
+            // 미니게임은 자기 그룹에 명시적으로 넣어, 이 미니게임을 쓰는 스테이지 번들(미니게임 스테이지·리믹스)이 복사하지 않게 한다.
+            AddressablesSetup.Register(AssetDatabase.GetAssetPath(minigame), AddressablesSetup.Group(recipe.MinigameGroupName), recipe.MinigameAddress);
+            built[recipe] = new BuiltMinigame { Definition = minigame, Patterns = library };
+
             var stage = LoadOrCreate<StageDefinition>(recipe.AssetPath("StageDefinition"));
-            stage.Setup(recipe.StageId, recipe.DisplayName, song, chart, presenter, cues, recipe.Background, recipe.HudInk);
+            stage.Setup(recipe.StageId, recipe.DisplayName, song, chart, new List<MinigameDefinition> { minigame });
             EditorUtility.SetDirty(stage);
             AssetDatabase.SaveAssets();
 
-            int notes = 0;
-            foreach (var pattern in chart.Patterns) notes += pattern.notes.Count;
-            report = $"{(generate ? "분석·채보 생성" : "기존 채보 유지")}, 노트 {notes}개, " +
-                     $"연출 프리팹 {(rebuildPresenter ? "다시 만듦" : "유지")}, 그룹 {recipe.GroupName}";
+            report = $"{(generated ? "분석·채보 생성" : "기존 채보 유지")}, 노트 {CountNotes(chart)}개, " +
+                     $"연출 프리팹 {(rebuildPresenter ? "다시 만듦" : "유지")}, 그룹 {recipe.GroupName} + {recipe.MinigameGroupName}";
             return RegisterAddressable(stage, recipe);
         }
 
-        static void ConfigureAudio(StageRecipe recipe)
+        /// <summary>
+        /// 리믹스: 앞에서 만든 미니게임들로 구간 목록을 채운 채보 생성 프로필을 만들고, 구간별 채보를 생성한다.
+        /// 스테이지의 미니게임 목록은 프로필의 구간 목록(손으로 고쳤을 수 있다)에서 뽑는다.
+        /// </summary>
+        static StageReference BuildRemixStage(RemixStageRecipe recipe, bool regenerateChart, Dictionary<MinigameStageRecipe, BuiltMinigame> built,
+            out string report)
+        {
+            EnsureFolder(recipe.DataFolder);
+            var plans = new List<ChartGenerationProfile.SegmentPlan>();
+            foreach (var (source, startBar) in recipe.Segments)
+            {
+                if (!built.TryGetValue(source, out var game))
+                    throw new InvalidOperationException($"리믹스 '{recipe.DisplayName}'의 미니게임 '{source.DisplayName}'이 아직 구성되지 않았습니다. 레시피 순서를 확인하세요.");
+                plans.Add(new ChartGenerationProfile.SegmentPlan { minigame = game.Definition, patterns = game.Patterns, startBar = startBar });
+            }
+
+            var song = PrepareSong(recipe, out var clip);
+            var chart = PrepareChart(recipe, song, clip, regenerateChart, (profile, isNew) =>
+            {
+                profile.patterns = null;
+                if (!isNew && profile.segments.Count > 0) return false;
+                profile.segments = plans;
+                return true;
+            }, out var chartProfile, out bool generated);
+
+            var minigames = new List<MinigameDefinition>();
+            foreach (var plan in chartProfile.segments)
+                if (plan.minigame != null && !minigames.Contains(plan.minigame)) minigames.Add(plan.minigame);
+
+            var stage = LoadOrCreate<StageDefinition>(recipe.AssetPath("StageDefinition"));
+            stage.Setup(recipe.StageId, recipe.DisplayName, song, chart, minigames);
+            EditorUtility.SetDirty(stage);
+            AssetDatabase.SaveAssets();
+
+            report = $"{(generated ? "분석·채보 생성" : "기존 채보 유지")}, 구간 {chart.Segments.Count}개(미니게임 {minigames.Count}개), " +
+                     $"노트 {CountNotes(chart)}개, 그룹 {recipe.GroupName}";
+            return RegisterAddressable(stage, recipe);
+        }
+
+        /// <summary>곡 오디오를 맞추고 Music 그룹에 넣은 뒤, 이 스테이지의 SongData가 그 곡을 가리키게 한다.</summary>
+        static SongData PrepareSong(StageRecipe recipe, out AudioClip clip)
         {
             ConfigureClip(recipe.MusicPath, AudioClipLoadType.CompressedInMemory, AudioCompressionFormat.Vorbis, 0.7f, false);
-            foreach (var file in Directory.GetFiles(recipe.SfxFolder, "*.wav"))
-                ConfigureClip(file.Replace('\\', '/'), AudioClipLoadType.DecompressOnLoad, AudioCompressionFormat.ADPCM, 1f, true);
+            clip = LoadRequired<AudioClip>(recipe.MusicPath);
+            // 곡은 로비 BGM·리믹스로도 쓰이므로 스테이지 번들에 묶지 않고 곡마다 번들 하나로 둔다.
+            AddressablesSetup.Register(recipe.MusicPath,
+                AddressablesSetup.Group(AddressablesSetup.MusicGroup, BundledAssetGroupSchema.BundlePackingMode.PackSeparately),
+                $"Music/{Path.GetFileNameWithoutExtension(recipe.MusicPath)}");
+            var song = LoadOrCreate<SongData>(recipe.AssetPath("SongData"));
+            if (song.Clip != clip)
+            {
+                song.SetClip(clip);
+                EditorUtility.SetDirty(song);
+            }
+            return song;
+        }
+
+        /// <summary>
+        /// 분석 결과·채보·생성 프로필을 맞추고, 곡이 바뀌었거나 분석·채보가 없으면(또는 <paramref name="forceGenerate"/>면) 분석·생성한다.
+        /// <paramref name="wirePatterns"/>는 프로필에 패턴(또는 구간 목록)을 연결하고, 바뀌어서 다시 생성해야 하면 true를 돌려준다.
+        /// </summary>
+        static ChartData PrepareChart(StageRecipe recipe, SongData song, AudioClip clip, bool forceGenerate,
+            Func<ChartGenerationProfile, bool, bool> wirePatterns,
+            out ChartGenerationProfile profile, out bool generated)
+        {
+            var analysis = LoadOrCreate<SongAnalysis>(recipe.AssetPath("SongAnalysis"));
+            var chart = LoadOrCreate<ChartData>(recipe.AssetPath("ChartData"));
+            profile = LoadOrCreate<ChartGenerationProfile>(recipe.AssetPath("ChartProfile"), out bool newProfile);
+            if (newProfile) profile.generator = recipe.CreateGeneratorSettings();
+            profile.song = song;
+            profile.analysis = analysis;
+            profile.output = chart;
+            bool patternsChanged = wirePatterns(profile, newProfile);
+            EditorUtility.SetDirty(profile);
+            AssetDatabase.SaveAssets();
+
+            // 곡이 바뀌었거나 분석이 없을 때만 분석하고, 분석이 새로 되면 채보도 다시 만든다.
+            bool analyze = !analysis.HasData || analysis.SourceClip != clip || !song.HasBeatMap;
+            generated = forceGenerate || analyze || patternsChanged || chart.Patterns.Count == 0;
+            if (analyze) ChartPipeline.Analyze(profile);
+            if (generated) ChartPipeline.Generate(profile);
+            return chart;
+        }
+
+        static int CountNotes(ChartData chart)
+        {
+            int notes = 0;
+            foreach (var pattern in chart.Patterns) notes += pattern.notes.Count;
+            return notes;
         }
 
         static void ConfigureClip(string path, AudioClipLoadType loadType, AudioCompressionFormat format, float quality, bool mono)
@@ -213,7 +323,10 @@ namespace IWannabe.EditorTools
             importer.SaveAndReimport();
         }
 
-        /// <summary>스테이지마다 Addressables 그룹 하나. StageDefinition만 주소를 갖고, 나머지는 의존성으로 같은 번들에 묶인다.</summary>
+        /// <summary>
+        /// 스테이지마다 Addressables 그룹 하나. StageDefinition만 주소를 갖고, 곡 데이터·채보는 의존성으로 같은 번들에 묶인다.
+        /// 미니게임과 곡 오디오는 각자 그룹에 명시적으로 들어가 있어 번들 의존성으로만 걸린다.
+        /// </summary>
         static StageReference RegisterAddressable(StageDefinition stage, StageRecipe recipe)
         {
             var entry = AddressablesSetup.Register(AssetDatabase.GetAssetPath(stage), AddressablesSetup.Group(recipe.GroupName), recipe.Address);
@@ -328,6 +441,9 @@ namespace IWannabe.EditorTools
             guid.stringValue = fallbackStageGuid;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
+            // 에디터·개발 빌드에서만 보이는 디버그 패널(F3). 릴리스 빌드에서는 스스로 꺼진다.
+            Assign(systems.AddComponent<StageDebugPanel>(), ("runner", runner), ("conductor", conductor), ("input", input));
+
             EditorSceneManager.MarkSceneDirty(scene);
             if (!EditorSceneManager.SaveScene(scene, SetupPaths.StageScene)) throw new IOException($"씬을 저장하지 못했습니다: {SetupPaths.StageScene}");
         }
@@ -436,7 +552,7 @@ namespace IWannabe.EditorTools
             var character = SetupUi.Rect("Character", screen, middle, middle, new Vector2(0f, 30f), new Vector2(380f, 380f));
             Assign(character.gameObject.AddComponent<LobbyCharacter>(), ("view", SetupUi.OtamatonUi(character, true)));
 
-            var list = SetupUi.Rect("StageList", screen, middle, middle, new Vector2(0f, -275f), new Vector2(1400f, 140f));
+            var list = SetupUi.Rect("StageList", screen, middle, middle, new Vector2(0f, -275f), new Vector2(1600f, 140f));
             SetupUi.Row(list, 32f);
             var template = BuildStageButtonTemplate(list);
 

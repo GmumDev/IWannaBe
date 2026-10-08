@@ -8,7 +8,7 @@ using static IWannabe.Rhythm.Charting.PatternPresets;
 namespace IWannabe.EditorTools
 {
     /// <summary>스테이지 1 "받아치기": 124 BPM 신스 팝, 투수가 던진 공을 타자가 받아친다.</summary>
-    sealed class HitBackStageRecipe : StageRecipe
+    sealed class HitBackStageRecipe : MinigameStageRecipe
     {
         public override string StageId => "hitback";
         public override string DisplayName => "받아치기";

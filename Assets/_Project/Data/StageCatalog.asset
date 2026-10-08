@@ -29,3 +29,11 @@ MonoBehaviour:
       m_SubObjectType: 
       m_SubObjectGUID: 
       m_EditorAssetChanged: 0
+  - stageId: remix1
+    displayName: "\uB9AC\uBBF9\uC2A4"
+    stage:
+      m_AssetGUID: c3ee04fe166e8be46ad89ae9c357f495
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0

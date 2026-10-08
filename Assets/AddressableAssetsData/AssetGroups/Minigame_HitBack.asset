@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Minigame_HitBack
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: Minigame_HitBack
+  m_GUID: 9af35f4ed1128de4b9cec8761fc00a5b
+  m_SerializeEntries:
+  - m_GUID: c420c42d091742d41aec154f7cfa397d
+    m_Address: Minigames/HitBack
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: b8f1030ef37ed934ca03cc2cc9de9461, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 2dd9d21f0d9eb7b4183525520c9d98a1, type: 2}
+    - {fileID: 11400000, guid: 51b79c7770d1f714586733ceca2399b6, type: 2}

@@ -33,6 +33,38 @@ namespace IWannabe.Rhythm.Charting
         public float silenceThreshold = 0.04f;
         /// <summary>다음 패턴의 앵커를 찾는 범위(박).</summary>
         public double lookaheadBeats = 4;
+        /// <summary>
+        /// 리믹스에서 큐는 앞 구간에서 울리고 입력은 미니게임이 바뀐 뒤에 오는 패턴(이어받기)에 주는 가산점.
+        /// 클수록 구간 경계마다 이어받기가 자주 나온다.
+        /// </summary>
+        public double carryOverBonus = 0.25;
+        /// <summary>
+        /// 앞 구간 패턴의 입력이 다음 구간 시작 박을 넘어가려면 적어도 이만큼(박) 뒤여야 한다. 그 사이에는 입력을 두지 않아,
+        /// 전환이 입력 사이에 들어갈 자리와 바뀐 화면에서 날아오는 물건을 보고 입력할 시간을 남긴다.
+        /// 이 간격 이상 뒤의 입력이 다음 미니게임이 이어받는 입력이다. 구간 시작 박에 딱 맞는 입력은 넘어간 것이 아니다.
+        /// </summary>
+        public double carryOverMinBeats = 0.5;
+
+        /// <summary>
+        /// 마지막 입력 박이 <paramref name="endBeat"/>인 패턴이, 다음 구간이 <paramref name="segmentEndBeat"/>에 시작할 때
+        /// 다음 미니게임이 이어받는 패턴인지.
+        /// </summary>
+        public bool IsCarryOver(double endBeat, double segmentEndBeat) =>
+            !double.IsPositiveInfinity(segmentEndBeat) && endBeat >= segmentEndBeat + carryOverMinBeats - 1e-6;
+    }
+
+    /// <summary>
+    /// 리믹스 구간 하나가 쓰는 패턴 목록. 이 목록의 패턴은 큐가 모두 [StartBeat, EndBeat) 안에 있어야 하고,
+    /// 노트는 EndBeat(다음 구간 시작)를 넘어도 된다. 넘어간 노트는 다음 구간의 미니게임이 이어받는다.
+    /// 따라 치기는 응답까지 범위 안에 둔다.
+    /// </summary>
+    public sealed class GeneratorPatternSet
+    {
+        public IReadOnlyList<PatternDefinition> Patterns;
+        public double StartBeat = double.NegativeInfinity;
+        public double EndBeat = double.PositiveInfinity;
+        /// <summary>패턴 이름 앞에 붙이는 이름(미니게임 ID). 쿨다운·반복 감점·보고에서 미니게임별로 패턴을 구분한다.</summary>
+        public string Label;
     }
 
     public sealed class GeneratorInput
@@ -46,7 +78,10 @@ namespace IWannabe.Rhythm.Charting
         public float[] GridMid;
         public float[] GridHigh;
         public int[] BarLevel;
+        /// <summary>미니게임 하나짜리 채보의 패턴 목록.</summary>
         public IReadOnlyList<PatternDefinition> Patterns;
+        /// <summary>리믹스: 구간마다의 패턴 목록(시작 순). 채우면 <see cref="Patterns"/> 대신 쓰고, 결과 패턴의 segment는 이 목록의 인덱스가 된다.</summary>
+        public IReadOnlyList<GeneratorPatternSet> PatternSets;
         public GeneratorSettings Settings;
 
         public static GeneratorInput FromAnalysis(AnalysisResult analysis, IReadOnlyList<PatternDefinition> patterns, GeneratorSettings settings)
@@ -108,17 +143,29 @@ namespace IWannabe.Rhythm.Charting
     }
 
     /// <summary>
-    /// 곡 분석 결과와 스테이지의 패턴 목록으로 채보를 만든다.
-    /// 곡을 2마디 구절로 나누고, 구절마다 쉴지 정한 뒤, 온셋 강도가 높은 자리에
-    /// 패턴을 하나씩 골라 끼운다. 같은 시드면 항상 같은 결과가 나온다.
+    /// 곡 분석 결과와 미니게임의 패턴 목록으로 채보를 만든다.
+    /// 곡을 2마디 구절로 나누고, 구절마다 쉴지 정한 뒤, 온셋 강도가 높은 자리에 패턴을 하나씩 골라 끼운다.
+    /// 리믹스는 구간마다의 패턴 목록을 받아 곡 전체를 한 번에 채운다. 패턴은 큐가 있는 구간의 목록에서 고르므로,
+    /// 구간 경계에서는 앞 미니게임의 큐로 시작해 다음 미니게임에서 입력하는 패턴이 생길 수 있다.
+    /// 같은 시드면 항상 같은 결과가 나온다.
     /// </summary>
     public static class ChartGenerator
     {
         const double Epsilon = 1e-6;
 
-        sealed class Candidate
+        /// <summary>고를 수 있는 패턴 하나와 그 패턴이 속한 구간.</summary>
+        sealed class Option
         {
             public PatternDefinition Definition;
+            public GeneratorPatternSet Set;
+            public int SetIndex;
+            /// <summary>쿨다운·반복 감점·보고에 쓰는 이름. 구간 목록이 여럿이면 미니게임 이름이 붙는다.</summary>
+            public string Key;
+        }
+
+        sealed class Candidate
+        {
+            public Option Option;
             public PatternInstance Instance;
             public double Score;
             public double EndBeat;
@@ -129,14 +176,16 @@ namespace IWannabe.Rhythm.Charting
             public const int RecentWindow = 4;
             public double CursorBeat = double.NegativeInfinity;
             public double LastInputTime = double.NegativeInfinity;
-            public string LastPatternId;
+            /// <summary>마지막으로 놓은 패턴의 구간. 이보다 뒤 구간의 패턴은 그 구간의 첫 패턴이다.</summary>
+            public int LastSetIndex = -1;
+            public string LastKey;
             public readonly List<string> Recent = new List<string>();
             public readonly List<string> History = new List<string>();
 
-            public bool IsCoolingDown(PatternDefinition def)
+            public bool IsCoolingDown(Option option)
             {
-                for (int i = History.Count - 1; i >= 0 && i >= History.Count - def.cooldown; i--)
-                    if (History[i] == def.id) return true;
+                for (int i = History.Count - 1; i >= 0 && i >= History.Count - option.Definition.cooldown; i--)
+                    if (History[i] == option.Key) return true;
                 return false;
             }
         }
@@ -181,7 +230,6 @@ namespace IWannabe.Rhythm.Charting
             if (input == null) throw new ArgumentNullException(nameof(input));
             if (input.BeatTimes == null || input.BeatTimes.Length < 8) throw new ArgumentException("비트 정보가 부족합니다.");
             if (input.BarLevel == null) throw new ArgumentException("마디 강도 정보가 없습니다.");
-            if (input.Patterns == null || input.Patterns.Count == 0) throw new ArgumentException("패턴이 없습니다.");
 
             var s = input.Settings ?? new GeneratorSettings();
             var ctx = new Context
@@ -191,15 +239,7 @@ namespace IWannabe.Rhythm.Charting
                 Tempo = new TempoMap(input.BeatTimes),
                 LimitBeat = input.BeatTimes.Length - 1 - Math.Max(0, s.tailBeats),
             };
-
-            var allowed = new List<PatternDefinition>();
-            foreach (var p in input.Patterns)
-            {
-                if (p == null || p.difficulty > s.difficulty) continue;
-                if (p.kind == PatternKind.Fixed && (p.notes == null || p.notes.Count == 0)) continue;
-                allowed.Add(p);
-            }
-            if (allowed.Count == 0) throw new ArgumentException($"난이도 {s.difficulty} 이하인 패턴이 없습니다.");
+            var options = CollectOptions(input, s);
 
             var rng = new Random(s.seed);
             var result = new List<PatternInstance>();
@@ -240,17 +280,18 @@ namespace IWannabe.Rhythm.Charting
                 for (int guard = 0; guard < 16 && placed < target; guard++)
                 {
                     var candidates = new List<Candidate>();
-                    foreach (var def in allowed)
+                    foreach (var option in options)
                     {
+                        var def = option.Definition;
                         if (level < def.minLevel || level > def.maxLevel) continue;
-                        if (state.IsCoolingDown(def)) continue;
+                        if (state.IsCoolingDown(option)) continue;
                         if (def.kind == PatternKind.CallAndResponse)
                         {
-                            if (placed == 0) TryCallAndResponse(def, p0, p1, level, state, ctx, candidates);
+                            if (placed == 0) TryCallAndResponse(option, p0, p1, level, state, ctx, candidates);
                         }
                         else
                         {
-                            CollectFixed(def, p0, p1, level, state, ctx, candidates);
+                            CollectFixed(option, p0, p1, level, state, ctx, candidates);
                         }
                     }
                     if (candidates.Count == 0) break;
@@ -265,8 +306,35 @@ namespace IWannabe.Rhythm.Charting
             return result;
         }
 
-        static void CollectFixed(PatternDefinition def, double p0, double p1, int level, Placement state, Context ctx, List<Candidate> output)
+        /// <summary>구간마다 난이도 이하의 쓸 수 있는 패턴을 모은다. 쓸 패턴이 하나도 없는 구간이 있으면 예외.</summary>
+        static List<Option> CollectOptions(GeneratorInput input, GeneratorSettings s)
         {
+            bool remix = input.PatternSets != null && input.PatternSets.Count > 0;
+            var sets = remix ? input.PatternSets : new[] { new GeneratorPatternSet { Patterns = input.Patterns } };
+            var options = new List<Option>();
+            for (int k = 0; k < sets.Count; k++)
+            {
+                var set = sets[k];
+                string where = remix ? $"구간 {k + 1}: " : string.Empty;
+                if (set?.Patterns == null || set.Patterns.Count == 0) throw new ArgumentException($"{where}패턴이 없습니다.");
+                if (k > 0 && set.StartBeat < sets[k - 1].EndBeat - Epsilon) throw new ArgumentException($"{where}앞 구간과 범위가 겹칩니다.");
+
+                int before = options.Count;
+                foreach (var p in set.Patterns)
+                {
+                    if (p == null || p.difficulty > s.difficulty) continue;
+                    if (p.kind == PatternKind.Fixed && (p.notes == null || p.notes.Count == 0)) continue;
+                    string key = string.IsNullOrEmpty(set.Label) ? p.id : $"{set.Label}/{p.id}";
+                    options.Add(new Option { Definition = p, Set = set, SetIndex = k, Key = key });
+                }
+                if (options.Count == before) throw new ArgumentException($"{where}난이도 {s.difficulty} 이하인 패턴이 없습니다.");
+            }
+            return options;
+        }
+
+        static void CollectFixed(Option option, double p0, double p1, int level, Placement state, Context ctx, List<Candidate> output)
+        {
+            var def = option.Definition;
             double minCue = 0, minNote = double.MaxValue, maxEnd = double.MinValue;
             foreach (var cue in def.cues) minCue = Math.Min(minCue, cue.offset);
             foreach (var note in def.notes)
@@ -284,12 +352,13 @@ namespace IWannabe.Rhythm.Charting
             for (double anchor = first; anchor + maxEnd <= p1 + Epsilon && anchor <= first + ctx.Settings.lookaheadBeats + Epsilon; anchor += step)
             {
                 var instance = Instantiate(def, anchor);
-                if (!Fits(instance, state, ctx, out double endBeat)) continue;
+                if (!Fits(instance, option, false, state, ctx, out double endBeat)) continue;
 
                 double score = ScoreFixed(def, instance, level, ctx);
                 score -= 0.06 * Math.Max(0, anchor + minNote - waitFrom - 1);
-                score += RepeatPenalty(def, state);
-                output.Add(new Candidate { Definition = def, Instance = instance, Score = score, EndBeat = endBeat });
+                score += RepeatPenalty(option, state);
+                score += CarryOverBonus(option.Set, endBeat, ctx.Settings);
+                output.Add(new Candidate { Option = option, Instance = instance, Score = score, EndBeat = endBeat });
             }
         }
 
@@ -325,8 +394,9 @@ namespace IWannabe.Rhythm.Charting
             return score;
         }
 
-        static void TryCallAndResponse(PatternDefinition def, double p0, double p1, int level, Placement state, Context ctx, List<Candidate> output)
+        static void TryCallAndResponse(Option option, double p0, double p1, int level, Placement state, Context ctx, List<Candidate> output)
         {
+            var def = option.Definition;
             int callBeats = Math.Max(1, def.callBeats);
             if (p0 + 2 * callBeats > p1 + Epsilon) return;
             if (state.CursorBeat > p0 + Epsilon) return;
@@ -376,15 +446,16 @@ namespace IWannabe.Rhythm.Charting
                 instance.cues.Add(new ChartCue { offset = offset - callBeats, cueId = def.callCueId, targetNote = i });
                 strengthSum += response[chosen[i]];
             }
-            if (!Fits(instance, state, ctx, out double endBeat)) return;
+            // 따라 치기는 선반에 줄선 모습이 곧 응답 리듬이라, 응답까지 그 미니게임 구간 안에 둔다.
+            if (!Fits(instance, option, true, state, ctx, out double endBeat)) return;
 
             // 음악이 앞뒤 구간에서 같은 리듬을 반복할수록 따라 치기가 자연스럽다.
             double similarity = Math.Max(0, Correlation(call, response));
             double score = strengthSum / chosen.Count + 0.2 * similarity;
             score += WeightBonus(def);
             score += 0.08 * (def.difficulty - 2) * (level - 1);
-            score += RepeatPenalty(def, state);
-            output.Add(new Candidate { Definition = def, Instance = instance, Score = score, EndBeat = endBeat });
+            score += RepeatPenalty(option, state);
+            output.Add(new Candidate { Option = option, Instance = instance, Score = score, EndBeat = endBeat });
         }
 
         static PatternInstance Instantiate(PatternDefinition def, double anchor)
@@ -397,28 +468,39 @@ namespace IWannabe.Rhythm.Charting
             return instance;
         }
 
-        /// <summary>큐가 앞 패턴과 겹치지 않고, 입력 간격이 충분하며, 곡 범위 안에 있는지 확인한다.</summary>
-        static bool Fits(PatternInstance instance, Placement state, Context ctx, out double endBeat)
+        /// <summary>
+        /// 큐가 앞 패턴과 겹치지 않고 그 패턴 목록의 구간 안에 있으며, 입력 간격이 충분하고, 곡 범위 안에 있는지 확인한다.
+        /// <paramref name="keepNotesInSet"/>면 노트(뗌 포함)도 구간 안에 있어야 한다.
+        /// 리믹스 구간 경계에서는 전환이 입력 사이에 들어갈 자리(<see cref="SegmentSwitch"/>)를 남긴다.
+        /// </summary>
+        static bool Fits(PatternInstance instance, Option option, bool keepNotesInSet, Placement state, Context ctx, out double endBeat)
         {
             var s = ctx.Settings;
+            var set = option.Set;
             endBeat = double.MinValue;
+            double firstBeat = double.MaxValue;
             foreach (var cue in instance.cues)
             {
                 double beat = instance.anchorBeat + cue.offset;
                 if (beat < 0 || beat < state.CursorBeat - Epsilon) return false;
+                if (beat < set.StartBeat - Epsilon || beat >= set.EndBeat - Epsilon) return false;
                 if (ctx.Tempo.BeatToTime(beat) < s.minCueTimeSeconds) return false;
+                firstBeat = Math.Min(firstBeat, beat);
             }
 
             var inputs = new List<double>();
             foreach (var note in instance.notes)
             {
                 double beat = instance.anchorBeat + note.offset;
+                if (InCarryGap(beat, set, s)) return false;
                 double press = ctx.Tempo.BeatToTime(beat);
                 inputs.Add(press);
+                firstBeat = Math.Min(firstBeat, beat);
                 double end = beat;
                 if (note.type == NoteType.Hold)
                 {
                     end = beat + note.holdBeats;
+                    if (InCarryGap(end, set, s)) return false;
                     double release = ctx.Tempo.BeatToTime(end);
                     if (release - press < s.minHoldSeconds) return false;
                     inputs.Add(release);
@@ -426,6 +508,12 @@ namespace IWannabe.Rhythm.Charting
                 endBeat = Math.Max(endBeat, end);
             }
             if (endBeat > ctx.LimitBeat + Epsilon) return false;
+            if (keepNotesInSet && endBeat >= set.EndBeat - Epsilon) return false;
+
+            // 새 구간의 첫 패턴은 앞 입력과 전환 간격 이상 떨어져 시작한다. 그 사이가 연출을 바꿀 자리다.
+            if (option.SetIndex > 0 && option.SetIndex > state.LastSetIndex
+                && ctx.Tempo.BeatToTime(firstBeat) - state.LastInputTime < SegmentSwitch.ClearanceSeconds)
+                return false;
 
             inputs.Sort();
             if (inputs[0] - state.LastInputTime < s.minNoteGapSeconds) return false;
@@ -434,19 +522,30 @@ namespace IWannabe.Rhythm.Charting
             return true;
         }
 
+        /// <summary>
+        /// 다음 구간 시작 박 바로 뒤(이어받기 최소 간격 안)인지. 앞 구간 패턴의 입력을 여기 두면 전환이 입력 사이에 들어갈 자리가 모자란다.
+        /// </summary>
+        static bool InCarryGap(double beat, GeneratorPatternSet set, GeneratorSettings s) =>
+            !double.IsPositiveInfinity(set.EndBeat)
+            && beat > set.EndBeat + Epsilon && beat < set.EndBeat + s.carryOverMinBeats - Epsilon;
+
         /// <summary>가중치 1이 기준. 홀드처럼 가끔 나와야 하는 패턴은 가중치를 낮춰 둔다.</summary>
         static double WeightBonus(PatternDefinition def) => 0.4 * (def.weight - 1);
 
         /// <summary>최근 몇 패턴 안에서 자주 쓴 패턴일수록 감점해 한 패턴만 반복되지 않게 한다.</summary>
-        static double RepeatPenalty(PatternDefinition def, Placement state)
+        static double RepeatPenalty(Option option, Placement state)
         {
             int uses = 0;
-            foreach (var id in state.Recent)
-                if (id == def.id) uses++;
+            foreach (var key in state.Recent)
+                if (key == option.Key) uses++;
             double penalty = -0.1 * uses;
-            if (def.id == state.LastPatternId) penalty -= 0.05;
+            if (option.Key == state.LastKey) penalty -= 0.05;
             return penalty;
         }
+
+        /// <summary>큐는 이 구간에, 입력은 미니게임이 바뀌고 조금 뒤에 오는 패턴(이어받기)이면 가산점.</summary>
+        static double CarryOverBonus(GeneratorPatternSet set, double endBeat, GeneratorSettings s) =>
+            s.IsCarryOver(endBeat, set.EndBeat) ? s.carryOverBonus : 0;
 
         /// <summary>최고점 근처 후보 중에서 점수 가중 무작위로 고른다. 매번 같은 패턴만 나오는 것을 막는다.</summary>
         static Candidate Pick(List<Candidate> candidates, Random rng)
@@ -474,17 +573,20 @@ namespace IWannabe.Rhythm.Charting
 
         static void Commit(Candidate pick, Placement state, Context ctx, List<PatternInstance> result, GeneratorReport report)
         {
+            var option = pick.Option;
+            pick.Instance.segment = option.SetIndex;
             result.Add(pick.Instance);
             state.CursorBeat = pick.EndBeat;
             state.LastInputTime = ctx.Tempo.BeatToTime(pick.EndBeat);
-            state.LastPatternId = pick.Definition.id;
-            state.Recent.Add(pick.Definition.id);
+            state.LastSetIndex = option.SetIndex;
+            state.LastKey = option.Key;
+            state.Recent.Add(option.Key);
             if (state.Recent.Count > Placement.RecentWindow) state.Recent.RemoveAt(0);
-            state.History.Add(pick.Definition.id);
+            state.History.Add(option.Key);
 
             report.NoteCount += pick.Instance.notes.Count;
-            report.PatternCounts.TryGetValue(pick.Definition.id, out int n);
-            report.PatternCounts[pick.Definition.id] = n + 1;
+            report.PatternCounts.TryGetValue(option.Key, out int n);
+            report.PatternCounts[option.Key] = n + 1;
         }
 
         static double Correlation(double[] a, double[] b)

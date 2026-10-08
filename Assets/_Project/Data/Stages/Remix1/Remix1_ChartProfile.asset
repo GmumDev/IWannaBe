@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9eb6006bbd1733f4288d78a9e3bc0b04, type: 3}
+  m_Name: Remix1_ChartProfile
+  m_EditorClassIdentifier: IWannabe.Rhythm.Editor::IWannabe.Rhythm.EditorTools.ChartGenerationProfile
+  song: {fileID: 11400000, guid: a547cb37c7b71554f8e5f1cbbf298be7, type: 2}
+  analysis: {fileID: 11400000, guid: 6d6626580ab15bf46a9f96760634ba9b, type: 2}
+  patterns: {fileID: 0}
+  segments:
+  - minigame: {fileID: 11400000, guid: c420c42d091742d41aec154f7cfa397d, type: 2}
+    patterns: {fileID: 11400000, guid: f391854f85dd53e4991e793076457c05, type: 2}
+    startBar: 0
+  - minigame: {fileID: 11400000, guid: 8437c99cd680c994799c04511a38fb9c, type: 2}
+    patterns: {fileID: 11400000, guid: 425f13462aab4814d96d426d8d639a31, type: 2}
+    startBar: 8
+  - minigame: {fileID: 11400000, guid: c420c42d091742d41aec154f7cfa397d, type: 2}
+    patterns: {fileID: 11400000, guid: f391854f85dd53e4991e793076457c05, type: 2}
+    startBar: 16
+  - minigame: {fileID: 11400000, guid: 8437c99cd680c994799c04511a38fb9c, type: 2}
+    patterns: {fileID: 11400000, guid: 425f13462aab4814d96d426d8d639a31, type: 2}
+    startBar: 24
+  - minigame: {fileID: 11400000, guid: c420c42d091742d41aec154f7cfa397d, type: 2}
+    patterns: {fileID: 11400000, guid: f391854f85dd53e4991e793076457c05, type: 2}
+    startBar: 28
+  - minigame: {fileID: 11400000, guid: 8437c99cd680c994799c04511a38fb9c, type: 2}
+    patterns: {fileID: 11400000, guid: 425f13462aab4814d96d426d8d639a31, type: 2}
+    startBar: 32
+  output: {fileID: 11400000, guid: e9897c2f5d636844482b1398543037b6, type: 2}
+  analyzer:
+    fftSize: 2048
+    hopSize: 256
+    minBpm: 70
+    maxBpm: 180
+    preferredBpm: 120
+    beatsPerBar: 4
+    tempoMode: 0
+    timeBias: 0.003
+    downbeatOverride: -1
+    midLevelThreshold: 0.35
+    highLevelThreshold: 0.8
+  generator:
+    seed: 20261009
+    difficulty: 3
+    phraseBars: 2
+    leadInBars: 1
+    tailBeats: 2
+    minNoteGapSeconds: 0.15
+    minHoldSeconds: 0.3
+    minCueTimeSeconds: 0.5
+    minNoteStrength: 0.12
+    notesPerBeatByLevel:
+    - 0.35
+    - 0.6
+    - 0.85
+    restChanceByLevel:
+    - 0.2
+    - 0.05
+    - 0
+    maxActivePhrasesByLevel: 020000000400000006000000
+    silenceThreshold: 0.04
+    lookaheadBeats: 4
+    carryOverBonus: 0.25
+    carryOverMinBeats: 0.5

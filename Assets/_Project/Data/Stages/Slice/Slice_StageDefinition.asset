@@ -16,25 +16,6 @@ MonoBehaviour:
   displayName: "\uBCA0\uAE30"
   song: {fileID: 11400000, guid: de25a88749f91d34180e47f9dbaca193, type: 2}
   chart: {fileID: 11400000, guid: e06995685dbaa4741b82af5a9726d161, type: 2}
-  presenterPrefab: {fileID: 4691262943500754104, guid: e5818fe742396fb4d937d9a34b8efe5e, type: 3}
-  cueSounds:
-  - cueId: toss
-    clip: {fileID: 8300000, guid: c9bd59e1c86358a4dbebc917c244b9db, type: 3}
-    volume: 0.9
-  - cueId: high
-    clip: {fileID: 8300000, guid: 0676375a8a7e7e84c873c2cab975bba6, type: 3}
-    volume: 0.85
-  - cueId: draw
-    clip: {fileID: 8300000, guid: a8756f891e990d841bcd9105ac368d65, type: 3}
-    volume: 0.8
-  - cueId: tick
-    clip: {fileID: 8300000, guid: 1fcb02e644e0f394abcdc72bc05278aa, type: 3}
-    volume: 0.8
-  - cueId: gong
-    clip: {fileID: 8300000, guid: dc7b488c3a6a4144490c54a8b39b6261, type: 3}
-    volume: 0.8
+  minigames:
+  - {fileID: 11400000, guid: 8437c99cd680c994799c04511a38fb9c, type: 2}
   musicVolume: 0.9
-  backgroundColor: {r: 0.16862746, g: 0.1764706, b: 0.25882354, a: 1}
-  hudInkColor: {r: 0.92941177, g: 0.9490196, b: 0.95686275, a: 1}
-  cameraSize: 5
-  minVisibleHalfWidth: 7.5

@@ -42,7 +42,22 @@ namespace IWannabe.Rhythm
         public string patternId;
         /// <summary>오프셋 0이 놓이는 비트 번호(TempoMap 기준).</summary>
         public double anchorBeat;
+        /// <summary>이 패턴이 속한 구간(<see cref="ChartSegment"/> 목록의 인덱스). 큐가 있는 구간이다. 구간이 없는 채보는 0.</summary>
+        public int segment;
         public List<ChartCue> cues = new List<ChartCue>();
         public List<ChartNote> notes = new List<ChartNote>();
+    }
+
+    /// <summary>
+    /// 곡의 한 구간을 맡는 미니게임. 리믹스는 구간이 여럿이고, 미니게임 하나짜리 스테이지는 구간이 없다.
+    /// 구간은 다음 구간의 시작 비트에서 끝난다. 패턴의 큐는 자기 구간 안에 있고, 노트는 다음 구간으로 넘어갈 수 있다.
+    /// </summary>
+    [Serializable]
+    public sealed class ChartSegment
+    {
+        /// <summary>스테이지의 미니게임 목록에서 찾을 ID. 큐 ID는 이 미니게임 안에서만 해석된다.</summary>
+        public string minigameId;
+        /// <summary>구간이 시작하는 비트 번호(TempoMap 기준). 첫 구간은 곡 처음부터라 이 값을 쓰지 않는다.</summary>
+        public double startBeat;
     }
 }

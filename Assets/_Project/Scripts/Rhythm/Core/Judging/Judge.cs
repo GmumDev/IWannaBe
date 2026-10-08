@@ -32,6 +32,12 @@ namespace IWannabe.Rhythm
 
         public bool IsHolding => holdingIndex >= 0;
 
+        /// <summary>노트 판정이 모두 끝났는지(홀드는 뗌까지). 노트 목록은 <see cref="TimelineNote.Id"/> 순이어야 한다.</summary>
+        public bool IsFinished(TimelineNote note) => states[note.Id] == State.Done;
+
+        /// <summary>이 홀드 노트의 누름 판정이 끝나 뗌을 기다리는 중인지.</summary>
+        public bool IsHoldingNote(TimelineNote note) => holdingIndex == note.Id;
+
         public void Press(double time, int source)
         {
             if (holdingIndex >= 0)
