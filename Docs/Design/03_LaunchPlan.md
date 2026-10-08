@@ -62,6 +62,8 @@
 
 ## 3. 작업 순서
 
+단계별 할 일과 진행 상태는 [04_DevRoadmap.md](04_DevRoadmap.md)에서 관리한다.
+
 ```mermaid
 flowchart TD
     Remix["리믹스 프로토타입<br/>받아치기 + 베기로 미니게임 연출 규칙 확정"]
