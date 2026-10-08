@@ -43,3 +43,8 @@ PhotonAppSettings.local.*
 ProjectSettings/AndroidResolverDependencies.xml
 Assets/GeneratedLocalRepo
 Assets/GeneratedLocalRepo.meta
+
+# 로컬 전용 테스트 자료(저작권 음원 등)와 점검 리포트
+/Assets/_Local/
+/Assets/_Local.meta
+/Reports/

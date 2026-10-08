@@ -7,8 +7,9 @@ namespace IWannabe.Rhythm.Charting
     /// 오프라인 곡 분석기.
     /// 스펙트럴 플럭스(대역별) → 자기상관 템포 추정 → 동적 계획법 비트 추적(Ellis 2007)
     /// → 템포 정규화 → 다운비트 추정 → 그리드 온셋 강도·마디 에너지 순으로 처리한다.
+    /// 박자 안정성 지표는 AudioAnalyzer.Stability.cs에 있다.
     /// </summary>
-    public static class AudioAnalyzer
+    public static partial class AudioAnalyzer
     {
         public const int GridPerBeat = 12; // 1/2, 1/3, 1/4, 1/6박을 모두 정확히 표현
 
@@ -35,7 +36,7 @@ namespace IWannabe.Rhythm.Charting
             double frameRate = sampleRate / (double)settings.hopSize;
             var features = ComputeFeatures(mono, sampleRate, settings.fftSize, settings.hopSize);
 
-            double period = EstimatePeriod(features.Full, frameRate, settings);
+            double period = EstimatePeriod(features.Full, frameRate, settings, out double pulseClarity);
             int[] beatFrames = TrackBeats(features.Full, period);
             if (beatFrames.Length < 8)
                 throw new InvalidOperationException("비트를 충분히 찾지 못했습니다. 리듬이 뚜렷한 곡인지 확인하세요.");
@@ -43,13 +44,21 @@ namespace IWannabe.Rhythm.Charting
             var raw = new double[beatFrames.Length];
             for (int i = 0; i < raw.Length; i++) raw[i] = beatFrames[i] / frameRate;
 
-            double[] beats = Regularize(raw, duration, settings.tempoMode, features.Full, frameRate, out bool constant);
+            // 고정 템포 여부는 BPM 하나짜리 격자가 맞는지로 정한다. 간격 변동만 보면 템포가 천천히 흔들리는 곡도 고정으로 잡혀
+            // 격자가 곡 중간에서 수백 ms 어긋난다. 원래 비트가 군데군데 미끄러져도 곡의 온셋에 격자가 맞으면 고정이다.
+            float[] fullPeaks = Peakiness(features.Full, frameRate);
+            var stability = MeasureTracking(raw, duration, fullPeaks, frameRate, settings.stability, out GridLine onsetGrid);
+            bool constant = settings.tempoMode == TempoMode.Constant
+                || (settings.tempoMode == TempoMode.Auto && stability.FitsConstantGrid(settings.stability));
+            GridLine? line = stability.FitsByBeats(settings.stability) ? (GridLine?)null : onsetGrid;
+            double[] beats = Regularize(raw, duration, constant, line, features.Full, frameRate);
             for (int i = 0; i < beats.Length; i++) beats[i] += settings.timeBias;
             beats = TrimToDuration(beats, duration);
 
+            double[] downbeatStrength = DownbeatStrength(beats, features, frameRate);
             int downbeat = settings.downbeatOverride >= 0
                 ? settings.downbeatOverride % bpb
-                : EstimateDownbeat(beats, features, frameRate, bpb);
+                : ArgMax(PhaseAverages(downbeatStrength, bpb));
 
             var result = new AnalysisResult
             {
@@ -65,13 +74,15 @@ namespace IWannabe.Rhythm.Charting
 
             // 온셋 피크는 실제 타격보다 앞서므로 그리드도 같은 보정만큼 당겨서 샘플링한다.
             double bias = settings.timeBias;
-            result.GridFull = SampleGrid(Peakiness(features.Full, frameRate), beats, frameRate, bias);
+            result.GridFull = SampleGrid(fullPeaks, beats, frameRate, bias);
             result.GridLow = SampleGrid(Peakiness(features.Low, frameRate), beats, frameRate, bias);
             result.GridMid = SampleGrid(Peakiness(features.Mid, frameRate), beats, frameRate, bias);
             result.GridHigh = SampleGrid(Peakiness(features.High, frameRate), beats, frameRate, bias);
 
             ComputeBarLevels(features.Rms, beats, downbeat, bpb, frameRate, settings, out result.BarEnergy, out result.BarLevel);
-            result.OnsetTimes = PickOnsets(Peakiness(features.Full, frameRate), frameRate, bias);
+            result.OnsetTimes = PickOnsets(fullPeaks, frameRate, bias);
+            FinishStability(stability, pulseClarity, downbeatStrength, bpb, result.GridFull, settings.stability);
+            result.Stability = stability;
             return result;
         }
 
@@ -175,7 +186,7 @@ namespace IWannabe.Rhythm.Charting
 
         // ───────────────────────── 템포 추정 ─────────────────────────
 
-        static double EstimatePeriod(float[] envelope, double frameRate, AnalyzerSettings s)
+        static double EstimatePeriod(float[] envelope, double frameRate, AnalyzerSettings s, out double clarity)
         {
             double[] o = RemoveTrend(envelope, (int)(frameRate * 0.5));
             int n = o.Length;
@@ -206,6 +217,11 @@ namespace IWannabe.Rhythm.Charting
                     best = l;
                 }
             }
+
+            double energy = 0;
+            for (int i = 0; i < n; i++) energy += o[i] * o[i];
+            energy /= Math.Max(1, n);
+            clarity = energy > 0 ? Math.Max(0, ac[best]) / energy : 0;
 
             double period = best;
             if (best > 1 && best < acLength - 1)
@@ -327,41 +343,24 @@ namespace IWannabe.Rhythm.Charting
 
         // ───────────────────────── 템포 정규화 ─────────────────────────
 
-        static double[] Regularize(double[] raw, double duration, TempoMode mode, float[] envelope, double frameRate, out bool constant)
+        /// <summary>
+        /// 원래 비트를 플레이에 쓸 비트로 다듬는다. 고정 템포면 직선 격자로, 아니면 지역 회귀로.
+        /// <paramref name="line"/>이 있으면 원래 비트 대신 그 격자(온셋에 맞춘 격자)를 쓴다.
+        /// </summary>
+        static double[] Regularize(double[] raw, double duration, bool constant, GridLine? line, float[] envelope, double frameRate)
         {
-            double[] intervals = Diff(raw);
-            double median = Median(intervals);
-
-            double sum = 0, sumSq = 0;
-            int count = 0;
-            foreach (var d in intervals)
-            {
-                if (d < 0.8 * median || d > 1.2 * median) continue;
-                sum += d;
-                sumSq += d * d;
-                count++;
-            }
-            double mean = count > 0 ? sum / count : median;
-            double cv = count > 1 ? Math.Sqrt(Math.Max(0, sumSq / count - mean * mean)) / mean : 1;
-            constant = mode == TempoMode.Constant || (mode == TempoMode.Auto && cv < 0.05);
-
             if (constant)
             {
-                // 빠진 박을 고려해 인덱스를 붙인 뒤 직선 회귀(이상치 2회 제거)
-                var index = new int[raw.Length];
-                for (int i = 1; i < raw.Length; i++)
-                    index[i] = index[i - 1] + Math.Max(1, (int)Math.Round((raw[i] - raw[i - 1]) / median));
-
-                var use = new bool[raw.Length];
-                for (int i = 0; i < use.Length; i++) use[i] = true;
-                double a = raw[0], b = median;
-                for (int iteration = 0; iteration < 3; iteration++)
+                double a, b;
+                if (line.HasValue)
                 {
-                    FitLine(index, raw, use, out a, out b);
-                    for (int i = 0; i < raw.Length; i++)
-                        use[i] = Math.Abs(raw[i] - (a + b * index[i])) < 0.03;
+                    a = line.Value.A;
+                    b = line.Value.B;
                 }
-
+                else
+                {
+                    FitConstantGrid(raw, Median(Diff(raw)), out a, out b, out _);
+                }
                 a = RefinePhase(a, b, duration, envelope, frameRate);
 
                 int kStart = (int)Math.Ceiling((0 - a) / b - 1e-9);
@@ -372,10 +371,61 @@ namespace IWannabe.Rhythm.Charting
             }
 
             // 가변 템포: ±4박 지역 회귀로 지터만 걷어내고 양끝을 확장한다.
+            double[] smooth = LocalRegression(raw, 4);
+            var list = new List<double>(smooth);
+            double head = smooth[1] - smooth[0];
+            while (list[0] - head >= 0) list.Insert(0, list[0] - head);
+            double tail = smooth[smooth.Length - 1] - smooth[smooth.Length - 2];
+            while (list[list.Count - 1] + tail <= duration) list.Add(list[list.Count - 1] + tail);
+            return list.ToArray();
+        }
+
+        /// <summary>비트 간격의 변동계수. 빠진 박·겹친 박을 빼려고 중앙값의 0.8~1.2배인 간격만 쓴다.</summary>
+        static double IntervalCv(double[] raw, double median)
+        {
+            double sum = 0, sumSq = 0;
+            int count = 0;
+            for (int i = 1; i < raw.Length; i++)
+            {
+                double d = raw[i] - raw[i - 1];
+                if (d < 0.8 * median || d > 1.2 * median) continue;
+                sum += d;
+                sumSq += d * d;
+                count++;
+            }
+            double mean = count > 0 ? sum / count : median;
+            return count > 1 ? Math.Sqrt(Math.Max(0, sumSq / count - mean * mean)) / mean : 1;
+        }
+
+        /// <summary>
+        /// 원래 비트에 BPM 하나짜리 직선 격자(시각 = a + b × 박 번호)를 맞춘다.
+        /// 빠진 박을 고려해 박 번호를 붙인 뒤 직선 회귀하고, 30ms 넘게 벗어난 비트를 빼며 두 번 더 맞춘다.
+        /// </summary>
+        static void FitConstantGrid(double[] raw, double median, out double a, out double b, out int[] index)
+        {
+            index = new int[raw.Length];
+            for (int i = 1; i < raw.Length; i++)
+                index[i] = index[i - 1] + Math.Max(1, (int)Math.Round((raw[i] - raw[i - 1]) / median));
+
+            var use = new bool[raw.Length];
+            for (int i = 0; i < use.Length; i++) use[i] = true;
+            a = raw[0];
+            b = median;
+            for (int iteration = 0; iteration < 3; iteration++)
+            {
+                FitLine(index, raw, use, out a, out b);
+                for (int i = 0; i < raw.Length; i++)
+                    use[i] = Math.Abs(raw[i] - (a + b * index[i])) < 0.03;
+            }
+        }
+
+        /// <summary>비트마다 앞뒤 <paramref name="radius"/>박으로 직선 회귀한 값. 비트 추적의 지터만 걷어낸다.</summary>
+        static double[] LocalRegression(double[] raw, int radius)
+        {
             var smooth = new double[raw.Length];
             for (int i = 0; i < raw.Length; i++)
             {
-                int lo = Math.Max(0, i - 4), hi = Math.Min(raw.Length - 1, i + 4);
+                int lo = Math.Max(0, i - radius), hi = Math.Min(raw.Length - 1, i + radius);
                 double sx = 0, sy = 0, sxx = 0, sxy = 0;
                 int m = hi - lo + 1;
                 for (int j = lo; j <= hi; j++)
@@ -389,13 +439,7 @@ namespace IWannabe.Rhythm.Charting
                 double intercept = (sy - slope * sx) / m;
                 smooth[i] = intercept + slope * i;
             }
-
-            var list = new List<double>(smooth);
-            double head = smooth[1] - smooth[0];
-            while (list[0] - head >= 0) list.Insert(0, list[0] - head);
-            double tail = smooth[smooth.Length - 1] - smooth[smooth.Length - 2];
-            while (list[list.Count - 1] + tail <= duration) list.Add(list[list.Count - 1] + tail);
-            return list.ToArray();
+            return smooth;
         }
 
         static void FitLine(int[] x, double[] y, bool[] use, out double intercept, out double slope)
@@ -456,10 +500,11 @@ namespace IWannabe.Rhythm.Charting
         // ───────────────────────── 다운비트 ─────────────────────────
 
         /// <summary>
-        /// 박마다 저음 온셋(킥)과 화성 변화량(크로마 차이)을 구해 마디 위상별로 합산한다.
-        /// 코드는 보통 마디 첫 박에서 바뀌고 킥도 첫 박에 놓이는 경우가 많다.
+        /// 박마다 저음 온셋(킥)과 화성 변화량(크로마 차이)으로 마디 첫 박다운 정도를 구한다.
+        /// 코드는 보통 마디 첫 박에서 바뀌고 킥도 첫 박에 놓이는 경우가 많다. 마디 위상별로 평균해(<see cref="PhaseAverages"/>)
+        /// 가장 큰 위상을 다운비트로 고른다.
         /// </summary>
-        static int EstimateDownbeat(double[] beats, Features f, double frameRate, int bpb)
+        static double[] DownbeatStrength(double[] beats, Features f, double frameRate)
         {
             int nb = beats.Length;
             var low = new double[nb];
@@ -476,17 +521,30 @@ namespace IWannabe.Rhythm.Charting
 
             double lowMean = Math.Max(1e-9, Mean(low));
             double novMean = Math.Max(1e-9, Mean(novelty));
+            var strength = new double[nb];
+            for (int i = 0; i < nb; i++) strength[i] = low[i] / lowMean + 1.5 * novelty[i] / novMean;
+            return strength;
+        }
+
+        /// <summary>박 번호를 <paramref name="bpb"/>로 나눈 나머지(마디 위상)별 평균.</summary>
+        static double[] PhaseAverages(double[] strength, int bpb)
+        {
             var score = new double[bpb];
             var count = new int[bpb];
-            for (int i = 0; i < nb; i++)
+            for (int i = 0; i < strength.Length; i++)
             {
-                score[i % bpb] += low[i] / lowMean + 1.5 * novelty[i] / novMean;
+                score[i % bpb] += strength[i];
                 count[i % bpb]++;
             }
+            for (int p = 0; p < bpb; p++) score[p] /= Math.Max(1, count[p]);
+            return score;
+        }
 
+        static int ArgMax(double[] x)
+        {
             int best = 0;
-            for (int p = 1; p < bpb; p++)
-                if (score[p] / Math.Max(1, count[p]) > score[best] / Math.Max(1, count[best])) best = p;
+            for (int i = 1; i < x.Length; i++)
+                if (x[i] > x[best]) best = i;
             return best;
         }
 

@@ -28,7 +28,8 @@ namespace IWannabe.Rhythm.EditorTools
             AssetDatabase.SaveAssets();
 
             Debug.Log($"[ChartPipeline] '{clip.name}' 분석 완료: BPM {result.Bpm:F2}, 비트 {result.BeatTimes.Length}개, " +
-                      $"첫 다운비트 {result.FirstDownbeatIndex}, 고정 템포 {result.ConstantTempo}, 구간 강도 {string.Join("", result.BarLevel)}");
+                      $"첫 다운비트 {result.FirstDownbeatIndex}, 고정 템포 {result.ConstantTempo}, 구간 강도 {string.Join("", result.BarLevel)}\n" +
+                      $"박자 안정성: {result.Stability} {result.Stability.Reason}");
             return result;
         }
 

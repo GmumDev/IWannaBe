@@ -1,0 +1,58 @@
+<linker>
+  <assembly fullname="IWannabe.App, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+    <type fullname="IWannabe.App.CustomizationCatalog" preserve="all" />
+    <type fullname="IWannabe.App.BackgroundItem" preserve="nothing" serialized="true" />
+    <type fullname="IWannabe.App.BgmItem" preserve="nothing" serialized="true" />
+    <type fullname="IWannabe.App.BodyItem" preserve="nothing" serialized="true" />
+    <type fullname="IWannabe.App.EyesItem" preserve="nothing" serialized="true" />
+  </assembly>
+  <assembly fullname="IWannabe.Otamaton, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+    <type fullname="IWannabe.Otamaton.OtamatonView" preserve="all" />
+    <type fullname="IWannabe.Otamaton.OtamatonBody" preserve="nothing" serialized="true" />
+    <type fullname="IWannabe.Otamaton.OtamatonEyes" preserve="nothing" serialized="true" />
+  </assembly>
+  <assembly fullname="IWannabe.Rhythm, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+    <type fullname="IWannabe.Rhythm.ChartData" preserve="all" />
+    <type fullname="IWannabe.Rhythm.MinigameDefinition" preserve="all" />
+    <type fullname="IWannabe.Rhythm.SongData" preserve="all" />
+    <type fullname="IWannabe.Rhythm.StageDefinition" preserve="all" />
+    <type fullname="IWannabe.Rhythm.CueSound" preserve="nothing" serialized="true" />
+  </assembly>
+  <assembly fullname="IWannabe.Stages, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+    <type fullname="IWannabe.Stages.HitBack.HitBackStagePresenter" preserve="all" />
+    <type fullname="IWannabe.Stages.ProgressRing" preserve="all" />
+    <type fullname="IWannabe.Stages.Slice.SliceStagePresenter" preserve="all" />
+  </assembly>
+  <assembly fullname="Unity.Addressables, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null" preserve="all">
+    <type fullname="UnityEngine.AddressableAssets.Addressables" preserve="all" />
+    <type fullname="UnityEngine.AddressableAssets.AssetReferenceSprite" preserve="nothing" serialized="true" />
+    <type fullname="UnityEngine.AddressableAssets.AssetReferenceT`1" preserve="nothing" serialized="true" />
+  </assembly>
+  <assembly fullname="Unity.ResourceManager, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null" preserve="all">
+    <type fullname="UnityEngine.ResourceManagement.ResourceProviders.AssetBundleProvider" preserve="all" />
+    <type fullname="UnityEngine.ResourceManagement.ResourceProviders.BundledAssetProvider" preserve="all" />
+    <type fullname="UnityEngine.ResourceManagement.ResourceProviders.InstanceProvider" preserve="all" />
+    <type fullname="UnityEngine.ResourceManagement.ResourceProviders.SceneProvider" preserve="all" />
+  </assembly>
+  <assembly fullname="UnityEngine.AudioModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+    <type fullname="UnityEngine.AudioClip" preserve="all" />
+  </assembly>
+  <assembly fullname="UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+    <type fullname="UnityEngine.GameObject" preserve="all" />
+    <type fullname="UnityEngine.LineRenderer" preserve="all" />
+    <type fullname="UnityEngine.Material" preserve="all" />
+    <type fullname="UnityEngine.Object" preserve="all" />
+    <type fullname="UnityEngine.Shader" preserve="all" />
+    <type fullname="UnityEngine.Sprite" preserve="all" />
+    <type fullname="UnityEngine.SpriteRenderer" preserve="all" />
+    <type fullname="UnityEngine.Texture2D" preserve="all" />
+    <type fullname="UnityEngine.Transform" preserve="all" />
+    <type fullname="UnityEngine.Color" preserve="nothing" serialized="true" />
+  </assembly>
+  <assembly fullname="IWannabe.Rhythm.Core">
+    <type fullname="IWannabe.Rhythm.ChartCue" preserve="nothing" serialized="true" />
+    <type fullname="IWannabe.Rhythm.ChartNote" preserve="nothing" serialized="true" />
+    <type fullname="IWannabe.Rhythm.ChartSegment" preserve="nothing" serialized="true" />
+    <type fullname="IWannabe.Rhythm.PatternInstance" preserve="nothing" serialized="true" />
+  </assembly>
+</linker>

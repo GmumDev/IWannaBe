@@ -4,7 +4,7 @@ namespace IWannabe.Rhythm.Charting
 {
     public enum TempoMode
     {
-        /// <summary>비트 간격이 고르면 고정 템포, 아니면 가변 템포로 처리.</summary>
+        /// <summary>찾은 비트가 BPM 하나짜리 격자에 맞으면 고정 템포, 아니면 가변 템포로 처리(<see cref="BeatStability.FitsConstantGrid"/>).</summary>
         Auto,
         /// <summary>BPM 하나로 직선 회귀. 전자음악·녹음 템포가 일정한 곡.</summary>
         Constant,
@@ -44,6 +44,8 @@ namespace IWannabe.Rhythm.Charting
         /// <summary>마디 에너지(0~1)를 강도 단계 0/1/2로 나누는 경계.</summary>
         public float midLevelThreshold = 0.35f;
         public float highLevelThreshold = 0.8f;
+        /// <summary>박자가 안정적인지 판정하는 기준.</summary>
+        public BeatStabilityCriteria stability = new BeatStabilityCriteria();
     }
 
     /// <summary>곡 분석 결과. 채보 생성기의 입력이 된다.</summary>
@@ -68,6 +70,8 @@ namespace IWannabe.Rhythm.Charting
         /// <summary>마디별 강도 단계(0 조용함 ~ 2 격렬함).</summary>
         public int[] BarLevel;
         public double[] OnsetTimes;
+        /// <summary>박자 안정성 지표와 판정. 저장된 분석(<c>SongAnalysis</c>)에서 되살린 결과에는 없다.</summary>
+        public BeatStability Stability;
 
         public float[] GetGrid(OnsetBand band)
         {
